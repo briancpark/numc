@@ -75,21 +75,24 @@ int allocate_matrix(matrix **mat, int rows, int cols) {
     (*mat)->cols  = cols;
 
     (*mat)->is_1d = 0;
-    if (rows == 1 || cols == 1)
-        (*mat)->is_1d = 1; 
+    if (rows == 1 || cols == 1) {
+        (*mat)->is_1d = 1;
+        //Ask if it's always set to 0
+    }
 
     (*mat)->ref_cnt = 1;
-    (*mat)->parent  = NULL;
-    (*mat)->data    = (double **) malloc(sizeof(double *) * rows);
+    (*mat)->parent = NULL;
+    (*mat)->data = (double**) malloc(sizeof(double*) * rows);
 
     if ((*mat)->data == NULL) {
         free((*mat));
-	PyErr_SetString(PyExc_RuntimeError, "Memory allocation failed.");
+	    PyErr_SetString(PyExc_RuntimeError, "Memory allocation failed.");
         return -1;
     }
 
     for (int i = 0; i < rows; i++) {
         (*mat)->data[i] = (double *) calloc(cols, sizeof(double));
+        //Ask what to do when malloc/calloc fails in the inner loop.
     }
 
     return 0;
@@ -117,18 +120,24 @@ int allocate_matrix_ref(matrix **mat, matrix *from, int row_offset, int col_offs
         return -1;
     }
 
-    (*mat)->rows  = rows;
-    (*mat)->cols  = cols;
+    (*mat)->rows = rows;
+    (*mat)->cols = cols;
 
     (*mat)->is_1d = 0;
-    if (rows == 1 || cols == 1)
-        (*mat)->is_1d = 1; 
+    if (rows == 1 || cols == 1) {
+        (*mat)->is_1d = 1;
+    }
 
     (*mat)->ref_cnt = 1;
-    (*mat)->parent  = from;
+    (*mat)->parent = from;
 
+<<<<<<< HEAD
     int offset	    = row_offset * cols + col_offset - 1; // Check this 
     (*mat)->data    = (from->data) + offset;
+=======
+    int offset = row_offset * col_offset; // Check this 
+    (*mat)->data = (from->data) + offset;
+>>>>>>> 8ea09d6bb6abf62857a5c7f4e13702c797ff0dca
 
     from->ref_cnt += 1;
     return 0;

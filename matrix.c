@@ -138,16 +138,9 @@ int allocate_matrix_ref(matrix **mat, matrix *from, int row_offset, int col_offs
     (*mat)->ref_cnt = 0;
     (*mat)->parent = from;
 
-    for (int i = 0; i < rows - row_offset + 1; i++) {
-        (*mat)->data[i] = (double *) calloc(cols - col_offset, sizeof(double));
-    }
 
-    for (int i = 0; i < rows - row_offset + 1; i++) {
-        for (int j = 0; j < cols - col_offset; j++) {
-            (*mat)->data[i][j] = from->data[i + row_offset][j + col_offset];    
-        }
-    }
-    
+    (*mat)->data = from->data + col_offset + row_offset;
+
     return 0;
 }
 
@@ -297,20 +290,27 @@ int pow_matrix(matrix *result, matrix *mat, int pow) {
         return 1;
     }
 
-    allocate_matrix(&result, mat->rows, mat->cols);
+    matrix *A = NULL;
+    allocate_matrix(&A, mat->rows, mat->cols);
+    for (int i = 0; i < mat->rows; i++) {
+        for (int j = 0; j < mat->cols; j++) {
+            A->data[i][j] = mat->data[i][j];
+        }
+    }
+
+    allocate_matrix(&result, A->rows, A->cols);
 
     for (int i = 0; i < result->rows; i++) {
         set(result, i, i, 1);
     }
-   
+    
     while (pow > 0) {
         if (pow % 2 == 1) {
-            mul_matrix(result, result, mat);
+            mul_matrix(result, result, A);
         }  
-        mul_matrix(mat, mat, mat);
-        pow = pow / 2;
+        mul_matrix(A, A, A);
+        pow = pow >> 1;
     }
-    
 
     return 0;
 }

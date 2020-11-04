@@ -143,6 +143,36 @@ int allocate_matrix_ref(matrix **mat, matrix *from, int row_offset, int col_offs
  */
 void deallocate_matrix(matrix *mat) {
     /* TODO: YOUR CODE HERE */
+    if (mat != NULL) {
+        if (mat->ref_cnt == 1) {	// mat has no other existing slices
+	    if (mat->parent == NULL) {	// if mat is not slice of another matrix
+	        if (mat->data != NULL) {
+	            free(mat->data);
+	        }
+	        free(mat);
+	    } else {			// if mat is slice of another matrix
+	        if ((mat->parent)->ref_cnt == 1) {
+		    if (mat->parent->data != NULL) {
+		        free(mat->parent->data);
+	    	    }
+		    free(mat->parent);
+
+ 		    if (mat->data != NULL) {
+		        free(mat->data);
+		    }
+		    free(mat);
+	        }
+	    }
+	// Check after this line later
+	} else if (mat->ref_cnt > 1) {	// mat has some other existing slices
+	    if (mat->parent == NULL) {  // if mat is not slice of another matrix
+	        mat->ref_cnt -= 1;
+	    } else {			// if mat is slice of another matrix
+	        mat->parent->ref_cnt -= 1;
+		free(mat);
+	    }
+	}
+    }
     return 0;
 }
 
@@ -152,7 +182,7 @@ void deallocate_matrix(matrix *mat) {
  */
 double get(matrix *mat, int row, int col) {
     /* TODO: YOUR CODE HERE */
-    return 0.0;
+    return mat->data[row][col];
 }
 
 /*
@@ -161,6 +191,7 @@ double get(matrix *mat, int row, int col) {
  */
 void set(matrix *mat, int row, int col, double val) {
     /* TODO: YOUR CODE HERE */
+    mat->data[row][col] = val;
 }
 
 /*

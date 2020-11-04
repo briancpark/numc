@@ -277,6 +277,7 @@ int pow_matrix(matrix *result, matrix *mat, int pow) {
     if (pow < 0) {
         return 1;
     }
+    return 0;
 }
 
 /*
@@ -303,10 +304,8 @@ int abs_matrix(matrix *result, matrix *mat) {
     /* TODO: YOUR CODE HERE */
     if ((result->rows == mat->rows) && (result->cols == mat->cols)) {
         for (int i = 0; i < mat->rows; i++) {
-            for (int j = 0; j < mat->cols; j++) {
-                if (mat->data[i][j] < 0) {
-                    result->data[i][j] = (-1.0) * mat->data[i][j];
-                }
+            for (int j = 0; j < mat->cols; j++) { 
+                result->data[i][j] = abs(mat->data[i][j]);
             }
         }
         return 0;

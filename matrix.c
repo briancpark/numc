@@ -64,32 +64,32 @@ int allocate_matrix(matrix **mat, int rows, int cols) {
         return -1;
     }
 
-    (mat *) = (matrix*) malloc(sizeof(struct matrix));
+    (*mat) = (matrix*) malloc(sizeof(struct matrix));
 
-    if ((mat *) == NULL) {
+    if ((*mat) == NULL) {
         PyErr_SetString(PyExc_RuntimeError, "Memory allocation failed.");
         return -1;
     }
 
-    (mat *)->rows  = rows;
-    (mat *)->cols  = cols;
+    (*mat)->rows  = rows;
+    (*mat)->cols  = cols;
 
-    (mat *)->is_1d = 0
+    (*mat)->is_1d = 0;
     if (rows == 1 || cols == 1)
-        (mat *)->is_1d = 1; 
+        (*mat)->is_1d = 1; 
 
-    (mat *)->ref_cnt = 1;
-    (mat *)->parent  = NULL;
-    (mat *)->data    = (double **) malloc(sizeof(double *) * rows);
+    (*mat)->ref_cnt = 1;
+    (*mat)->parent  = NULL;
+    (*mat)->data    = (double **) malloc(sizeof(double *) * rows);
 
-    if ((mat *)->data == NULL) {
-        free((mat *));
+    if ((*mat)->data == NULL) {
+        free((*mat));
 	PyErr_SetString(PyExc_RuntimeError, "Memory allocation failed.");
         return -1;
     }
 
     for (int i = 0; i < rows; i++) {
-        (mat *)->data[i] = (double *) calloc(cols, sizeof(double))    
+        (*mat)->data[i] = (double *) calloc(cols, sizeof(double));
     }
 
     return 0;
@@ -110,23 +110,25 @@ int allocate_matrix_ref(matrix **mat, matrix *from, int row_offset, int col_offs
         return -1;
     }
 
-    (mat *) = (matrix*) malloc(sizeof(struct matrix));
+    (*mat) = (matrix*) malloc(sizeof(struct matrix));
 
-    if ((mat *) == NULL) {
+    if ((*mat) == NULL) {
         PyErr_SetString(PyExc_RuntimeError, "Memory allocation failed.");
         return -1;
     }
 
-    (mat *)->rows  = rows;
-    (mat *)->cols  = cols;
+    (*mat)->rows  = rows;
+    (*mat)->cols  = cols;
 
-    (mat *)->is_1d = 0
+    (*mat)->is_1d = 0;
     if (rows == 1 || cols == 1)
-        (mat *)->is_1d = 1; 
+        (*mat)->is_1d = 1; 
 
-    (mat *)->ref_cnt = 1;
-    (mat *)->parent  = from;
-    (mat *)->data    = (from->data) + offset;
+    (*mat)->ref_cnt = 1;
+    (*mat)->parent  = from;
+
+    int offset	    = row_offset * col_offset; // Check this 
+    (*mat)->data    = (from->data) + offset;
 
     from->ref_cnt += 1;
     return 0;

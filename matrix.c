@@ -71,8 +71,8 @@ int allocate_matrix(matrix **mat, int rows, int cols) {
         return -1;
     }
 
-    (*mat)->rows  = rows;
-    (*mat)->cols  = cols;
+    (*mat)->rows = rows;
+    (*mat)->cols = cols;
 
     (*mat)->is_1d = 0;
     if (rows == 1 || cols == 1) {
@@ -131,15 +131,14 @@ int allocate_matrix_ref(matrix **mat, matrix *from, int row_offset, int col_offs
     (*mat)->ref_cnt = 1;
     (*mat)->parent = from;
 
-<<<<<<< HEAD
-    int offset	    = row_offset * cols + col_offset - 1; // Check this 
-    (*mat)->data    = (from->data) + offset;
-=======
-    int offset = row_offset * col_offset; // Check this 
-    (*mat)->data = (from->data) + offset;
->>>>>>> 8ea09d6bb6abf62857a5c7f4e13702c797ff0dca
+    int offset1 = row_offset * cols + col_offset;
+    (*mat)->data = (from->data) + offset1;
+
+    int offset2 = row_offset * col_offset;
+    (*mat)->data = (from->data) + offset2;
 
     from->ref_cnt += 1;
+
     return 0;
 }
 
@@ -154,22 +153,21 @@ void deallocate_matrix(matrix *mat) {
     /* TODO: YOUR CODE HERE */
     if (mat != NULL) {
         if (mat->ref_cnt == 1) {	// mat has no other existing slices
-	    if (mat->parent == NULL) {	// if mat is not slice of another matrix
-	        if (mat->data != NULL) {
+	        if (mat->parent == NULL && mat->data != NULL) {
 	            free(mat->data);
 	        }
 	        free(mat);
 	    } else {			// if mat is slice of another matrix
 	        if ((mat->parent)->ref_cnt == 1) {
-		    if (mat->parent->data != NULL) {
-		        free(mat->parent->data);
+		        if (mat->parent->data != NULL) {
+		            free(mat->parent->data);
 	    	    }
-		    free(mat->parent);
+		        free(mat->parent);
 
- 		    if (mat->data != NULL) {
-		        free(mat->data);
-		    }
-		    free(mat);
+ 		        if (mat->data != NULL) {
+		            free(mat->data);
+		        }
+		        free(mat);
 	        }
 	    }
 	// Check after this line later
@@ -178,7 +176,7 @@ void deallocate_matrix(matrix *mat) {
 	        mat->ref_cnt -= 1;
 	    } else {			// if mat is slice of another matrix
 	        mat->parent->ref_cnt -= 1;
-		free(mat);
+		    free(mat);
 	    }
 	}
     }
@@ -208,6 +206,13 @@ void set(matrix *mat, int row, int col, double val) {
  */
 void fill_matrix(matrix *mat, double val) {
     /* TODO: YOUR CODE HERE */
+    int rows = mat->rows;
+    int cols = mat->cols;
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            mat->data[i][j] = val;
+        }
+    }
 }
 
 /*
@@ -216,6 +221,20 @@ void fill_matrix(matrix *mat, double val) {
  */
 int add_matrix(matrix *result, matrix *mat1, matrix *mat2) {
     /* TODO: YOUR CODE HERE */
+
+    //TODO: Do I need to malloc result?
+
+    if ((mat1->rows != mat2->rows) && (mat1->cols != mat2->cols)) {
+        return -1;
+    }
+
+    for (int i = 0; i < mat1->rows; i++) {
+        for (int j = 0; j < mat2->cols; j++) {
+            result->data[i][j] = mat1->data[i][j] + mat2->data[i][j];
+        }
+    }
+
+    return 0;
 }
 
 /*

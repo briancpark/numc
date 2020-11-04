@@ -274,9 +274,26 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
  */
 int pow_matrix(matrix *result, matrix *mat, int pow) {
     /* TODO: YOUR CODE HERE */
-    if (pow < 0) {
+    if (pow < 0 || (mat->rows != mat->cols)) {
         return 1;
     }
+
+    //If matrix to the 0th power, it is the identity matrix
+    if (pow == 0) {
+        for (int i = 0; i < mat->rows; i++) {
+            result->data[i][i] = 1;
+        }
+        return 0;
+    }
+
+    for (int n = 1; n < pow; n++) {
+        if (n == 1) {
+            mul_matrix(result, mat, mat);
+        } else {
+            mul_matrix(result, result, mat);
+        }
+    }
+
     return 0;
 }
 

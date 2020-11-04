@@ -59,6 +59,49 @@ void rand_matrix(matrix *result, unsigned int seed, double low, double high) {
  */
 int allocate_matrix(matrix **mat, int rows, int cols) {
     /* TODO: YOUR CODE HERE */
+    if (rows <= 0 || cols <= 0) {
+        return -1;
+    }
+
+    matrix *new_matrix;
+    new_matrix = (matrix*) malloc(sizeof(struct matrix));
+
+    if (new_matrix == NULL) {
+        return -1;
+    }
+
+    new_matrix->rows = rows;
+    new_matrix->cols = cols;
+    
+    if (rows == 1 || cols == 1) {
+        new_matrix->is_1d = 0;
+        //Ask what the default value of is_1d is?
+    }
+
+    double **data = (double**) malloc(sizeof(double*) * rows);
+
+    if (data == NULL) {
+        free(new_matrix);
+        return -1;
+    }
+
+    for (int i = 0; i < rows; i++) {
+        *(data + i) = (double*) malloc(sizeof(double) * cols);
+        //Free data here? Ask on Piazza later how a 2D double array is implemented.
+    }
+    
+    //Initialize all the values of the matrix to 0.0
+    for (int i = 0; i < rows; i++) {
+        for(int j = 0; j < cols; j++) {
+            *(*(data+i)+j) = 0.0;
+        }
+    }
+
+    new_matrix->data = data;
+    new_matrix->parent = NULL;  
+   
+    *mat = new_matrix;
+    return 0;
 }
 
 /*
@@ -71,6 +114,7 @@ int allocate_matrix(matrix **mat, int rows, int cols) {
 int allocate_matrix_ref(matrix **mat, matrix *from, int row_offset, int col_offset,
                         int rows, int cols) {
     /* TODO: YOUR CODE HERE */
+    return 0;
 }
 
 /*
@@ -82,6 +126,7 @@ int allocate_matrix_ref(matrix **mat, matrix *from, int row_offset, int col_offs
  */
 void deallocate_matrix(matrix *mat) {
     /* TODO: YOUR CODE HERE */
+    return 0;
 }
 
 /*
@@ -90,6 +135,7 @@ void deallocate_matrix(matrix *mat) {
  */
 double get(matrix *mat, int row, int col) {
     /* TODO: YOUR CODE HERE */
+    return 0.0;
 }
 
 /*

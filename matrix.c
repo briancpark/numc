@@ -71,17 +71,16 @@ int allocate_matrix(matrix **mat, int rows, int cols) {
         return -1;
     }
 
-    (mat *)->rows = rows;
-    (mat *)->cols = cols;
+    (mat *)->rows  = rows;
+    (mat *)->cols  = cols;
 
     (mat *)->is_1d = 0
     if (rows == 1 || cols == 1)
         (mat *)->is_1d = 1; 
 
     (mat *)->ref_cnt = 1;
-    (mat *)->parent = NULL;
-    
-    (mat *)->data = (double **) malloc(sizeof(double *) * rows);
+    (mat *)->parent  = NULL;
+    (mat *)->data    = (double **) malloc(sizeof(double *) * rows);
 
     if ((mat *)->data == NULL) {
         free((mat *));
@@ -106,6 +105,30 @@ int allocate_matrix(matrix **mat, int rows, int cols) {
 int allocate_matrix_ref(matrix **mat, matrix *from, int row_offset, int col_offset,
                         int rows, int cols) {
     /* TODO: YOUR CODE HERE */
+    if (rows <= 0 || cols <= 0) {
+        PyErr_SetString(PyExc_TypeError, "Negative index");
+        return -1;
+    }
+
+    (mat *) = (matrix*) malloc(sizeof(struct matrix));
+
+    if ((mat *) == NULL) {
+        PyErr_SetString(PyExc_RuntimeError, "Memory allocation failed.");
+        return -1;
+    }
+
+    (mat *)->rows  = rows;
+    (mat *)->cols  = cols;
+
+    (mat *)->is_1d = 0
+    if (rows == 1 || cols == 1)
+        (mat *)->is_1d = 1; 
+
+    (mat *)->ref_cnt = 1;
+    (mat *)->parent  = from;
+    (mat *)->data    = (from->data) + offset;
+
+    from->ref_cnt += 1;
     return 0;
 }
 

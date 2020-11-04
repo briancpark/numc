@@ -168,15 +168,13 @@ void deallocate_matrix(matrix *mat) {
         free(mat);
     } else if(mat->ref_cnt > 0) {
         mat->ref_cnt--;
-    } else {
+    } else { 
         if (mat->parent->ref_cnt <= 1) {
             free(mat->parent->data);
             free(mat->parent);
         }
         free(mat);        
     }
-
-    return 0;
 }    
 
 /*
@@ -254,7 +252,19 @@ int sub_matrix(matrix *result, matrix *mat1, matrix *mat2) {
  */
 int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
     /* TODO: YOUR CODE HERE */
-    return 0;
+    if ((result->rows == mat1->rows) && (result->cols == mat2->cols) && (mat1->cols == mat2->rows)) { 
+        for (int i = 0; i < mat1->rows; i++) {
+            for (int j = 0; j < mat2->cols; j++) {
+                for (int k = 0; k < mat2->rows; k++) {
+                    result->data[i][j] += mat1->data[i][k] * mat2->data[k][j];
+                }
+            }
+        }
+
+        return 0;
+    }
+
+    return 1;
 }
 
 /*
@@ -264,7 +274,9 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
  */
 int pow_matrix(matrix *result, matrix *mat, int pow) {
     /* TODO: YOUR CODE HERE */
-    return 0;
+    if (pow < 0) {
+        return 1;
+    }
 }
 
 /*
@@ -272,11 +284,10 @@ int pow_matrix(matrix *result, matrix *mat, int pow) {
  * Return 0 upon success and a nonzero value upon failure.
  */
 int neg_matrix(matrix *result, matrix *mat) {
-    if ((result->rows == mat->rows) && 
-        (result->cols == mat->cols)) {
+    if ((result->rows == mat->rows) && (result->cols == mat->cols)) {
         for (int i = 0; i < mat->rows; i++) {
             for (int j = 0; j < mat->cols; j++) {
-                result->data[i][j] = (-1) * mat->data[i][j];
+                result->data[i][j] = (-1.0) * mat->data[i][j];
             }
         }
         return 0;
@@ -290,12 +301,11 @@ int neg_matrix(matrix *result, matrix *mat) {
  */
 int abs_matrix(matrix *result, matrix *mat) {
     /* TODO: YOUR CODE HERE */
-    if ((result->rows == mat->rows) && 
-        (result->cols == mat->cols)) {
+    if ((result->rows == mat->rows) && (result->cols == mat->cols)) {
         for (int i = 0; i < mat->rows; i++) {
             for (int j = 0; j < mat->cols; j++) {
                 if (mat->data[i][j] < 0) {
-                    result->data[i][j] = (-1) * mat->data[i][j];
+                    result->data[i][j] = (-1.0) * mat->data[i][j];
                 }
             }
         }
@@ -303,5 +313,3 @@ int abs_matrix(matrix *result, matrix *mat) {
     }
     return 1;
 }
-}
-

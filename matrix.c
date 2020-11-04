@@ -108,6 +108,11 @@ int allocate_matrix(matrix **mat, int rows, int cols) {
 int allocate_matrix_ref(matrix **mat, matrix *from, int row_offset, int col_offset,
                         int rows, int cols) {
     /* TODO: YOUR CODE HERE */
+    if (row_offset > rows || col_offset > cols) {
+        PyErr_SetString(PyExc_TypeError, "Out of bound slicing.");
+        return -1;
+    }
+
     if (rows <= 0 || cols <= 0) {
         PyErr_SetString(PyExc_TypeError, "Negative index");
         return -1;
@@ -128,16 +133,19 @@ int allocate_matrix_ref(matrix **mat, matrix *from, int row_offset, int col_offs
         (*mat)->is_1d = 1;
     }
 
-    (*mat)->ref_cnt = 1;
+    from->ref_cnt += 1;
+    (*mat)->ref_cnt = 0;
     (*mat)->parent = from;
 
-    int offset1 = row_offset * cols + col_offset;
-    (*mat)->data = (from->data) + offset1;
+    for (int i = 0; i < rows - row_offset; i++) {
+        (*mat)->data[i] = (double *) calloc(cols - col_offset, sizeof(double));
+    }
 
-    int offset2 = row_offset * col_offset;
-    (*mat)->data = (from->data) + offset2;
-
-    from->ref_cnt += 1;
+    for (int i = 0; i < rows - row_offset + 1; i++) {
+        for (int j = 0; j < cols - col_offset; j++) {
+            (*mat)->data[i][j] = from->data[i + row_offset][j + col_offset];    
+        }
+    }
 
     return 0;
 }
@@ -151,36 +159,25 @@ int allocate_matrix_ref(matrix **mat, matrix *from, int row_offset, int col_offs
  */
 void deallocate_matrix(matrix *mat) {
     /* TODO: YOUR CODE HERE */
-    if (mat != NULL) {
-        if (mat->ref_cnt == 1) {	// mat has no other existing slices
-	        if (mat->parent == NULL && mat->data != NULL) {
-	            free(mat->data);
-	        }
-	        free(mat);
-	    } else {			// if mat is slice of another matrix
-	        if ((mat->parent)->ref_cnt == 1) {
-		        if (mat->parent->data != NULL) {
-		            free(mat->parent->data);
-	    	    }
-		        free(mat->parent);
+    if (mat == NULL) {
+        return;
+    }
+    
+    if (mat->parent == NULL && mat->ref_cnt <= 1) {
+        free(mat->data);
+        free(mat);
+    } else if(mat->ref_cnt > 0) {
+        mat->ref_cnt--;
+    } else {
+        if (mat->parent->ref_cnt <= 1) {
+            free(mat->parent->data);
+            free(mat->parent);
+        }
+        free(mat);        
+    }
 
- 		        if (mat->data != NULL) {
-		            free(mat->data);
-		        }
-		        free(mat);
-	        }
-	    }
-	// Check after this line later
-	} else if (mat->ref_cnt > 1) {	// mat has some other existing slices
-	    if (mat->parent == NULL) {  // if mat is not slice of another matrix
-	        mat->ref_cnt -= 1;
-	    } else {			// if mat is slice of another matrix
-	        mat->parent->ref_cnt -= 1;
-		    free(mat);
-	    }
-	}
     return 0;
-}
+}    
 
 /*
  * Return the double value of the matrix at the given row and column.
@@ -220,7 +217,8 @@ void fill_matrix(matrix *mat, double val) {
  */
 int add_matrix(matrix *result, matrix *mat1, matrix *mat2) {
     /* TODO: YOUR CODE HERE */
-    if ((result->rows == mat1->rows == mat2->rows) && (result->cols == mat1->cols == mat2->cols)) {
+    if ((result->rows == mat1->rows && mat1->rows == mat2->rows) && 
+        (result->cols == mat1->cols && mat1->cols == mat2->cols)) {
         for (int i = 0; i < mat1->rows; i++) {
             for (int j = 0; j < mat2->cols; j++) {
                 result->data[i][j] = mat1->data[i][j] + mat2->data[i][j];
@@ -237,7 +235,8 @@ int add_matrix(matrix *result, matrix *mat1, matrix *mat2) {
  */
 int sub_matrix(matrix *result, matrix *mat1, matrix *mat2) {
     /* TODO: YOUR CODE HERE */
-    if ((result->rows == mat1->rows == mat2->rows) && (result->cols == mat1->cols == mat2->cols)) {
+    if ((result->rows == mat1->rows && mat1->rows == mat2->rows) && 
+        (result->cols == mat1->cols && mat1->cols == mat2->cols)) {
         for (int i = 0; i < mat1->rows; i++) {
             for (int j = 0; j < mat1->cols; j++) {
                 result->data[i][j] = mat1->data[i][j] - mat2->data[i][j];
@@ -255,6 +254,7 @@ int sub_matrix(matrix *result, matrix *mat1, matrix *mat2) {
  */
 int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
     /* TODO: YOUR CODE HERE */
+    return 0;
 }
 
 /*
@@ -264,6 +264,7 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
  */
 int pow_matrix(matrix *result, matrix *mat, int pow) {
     /* TODO: YOUR CODE HERE */
+    return 0;
 }
 
 /*
@@ -272,6 +273,7 @@ int pow_matrix(matrix *result, matrix *mat, int pow) {
  */
 int neg_matrix(matrix *result, matrix *mat) {
     /* TODO: YOUR CODE HERE */
+    return 0;
 }
 
 /*
@@ -280,5 +282,6 @@ int neg_matrix(matrix *result, matrix *mat) {
  */
 int abs_matrix(matrix *result, matrix *mat) {
     /* TODO: YOUR CODE HERE */
+    return 0;
 }
 

@@ -74,10 +74,10 @@ int allocate_matrix(matrix **mat, int rows, int cols) {
     (*mat)->rows = rows;
     (*mat)->cols = cols;
 
-    (*mat)->is_1d = 0;
     if (rows == 1 || cols == 1) {
         (*mat)->is_1d = 1;
-        //Ask if it's always set to 0
+    } else {
+        (*mat)->is_1d = 0;
     }
 
     (*mat)->ref_cnt = 1;
@@ -128,16 +128,17 @@ int allocate_matrix_ref(matrix **mat, matrix *from, int row_offset, int col_offs
     (*mat)->rows = rows;
     (*mat)->cols = cols;
 
-    (*mat)->is_1d = 0;
     if (rows == 1 || cols == 1) {
         (*mat)->is_1d = 1;
+    } else {
+        (*mat)->is_1d = 0;
     }
 
     from->ref_cnt += 1;
     (*mat)->ref_cnt = 0;
     (*mat)->parent = from;
 
-    for (int i = 0; i < rows - row_offset; i++) {
+    for (int i = 0; i < rows - row_offset + 1; i++) {
         (*mat)->data[i] = (double *) calloc(cols - col_offset, sizeof(double));
     }
 
@@ -146,7 +147,7 @@ int allocate_matrix_ref(matrix **mat, matrix *from, int row_offset, int col_offs
             (*mat)->data[i][j] = from->data[i + row_offset][j + col_offset];    
         }
     }
-
+    
     return 0;
 }
 
@@ -279,7 +280,6 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
 
         return 0;
     }
-
     return 1;
 }
 
@@ -290,18 +290,19 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
  */
 int pow_matrix(matrix *result, matrix *mat, int pow) {
     /* TODO: YOUR CODE HERE */
-    /*
-     * Inspired from https://www.hackerearth.com/practice/notes/matrix-exponentiation-1/
+    /* Inspired from https://www.hackerearth.com/practice/notes/matrix-exponentiation-1/
      */
 
     if (pow < 0 || (mat->rows != mat->cols)) {
         return 1;
     }
 
+    allocate_matrix(&result, mat->rows, mat->cols);
+
     for (int i = 0; i < result->rows; i++) {
         set(result, i, i, 1);
     }
-
+   
     while (pow > 0) {
         if (pow % 2 == 1) {
             mul_matrix(result, result, mat);
@@ -309,6 +310,7 @@ int pow_matrix(matrix *result, matrix *mat, int pow) {
         mul_matrix(mat, mat, mat);
         pow = pow / 2;
     }
+    
 
     return 0;
 }

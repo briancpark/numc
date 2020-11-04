@@ -127,7 +127,7 @@ int allocate_matrix_ref(matrix **mat, matrix *from, int row_offset, int col_offs
     (*mat)->ref_cnt = 1;
     (*mat)->parent  = from;
 
-    int offset	    = row_offset * col_offset; // Check this 
+    int offset	    = row_offset * cols + col_offset - 1; // Check this 
     (*mat)->data    = (from->data) + offset;
 
     from->ref_cnt += 1;

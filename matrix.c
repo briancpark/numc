@@ -286,10 +286,14 @@ int pow_matrix(matrix *result, matrix *mat, int pow) {
         return 0;
     }
 
+    //temp_matrix = mat
+    //allocate_matrix(matrix **mat, int rows, int cols) {
+
     for (int n = 1; n < pow; n++) {
         if (n == 1) {
             mul_matrix(result, mat, mat);
         } else {
+            //TODO: Bug here. 
             mul_matrix(result, result, mat);
         }
     }

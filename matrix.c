@@ -60,47 +60,39 @@ void rand_matrix(matrix *result, unsigned int seed, double low, double high) {
 int allocate_matrix(matrix **mat, int rows, int cols) {
     /* TODO: YOUR CODE HERE */
     if (rows <= 0 || cols <= 0) {
+        PyErr_SetString(PyExc_TypeError, "Negative index");
         return -1;
     }
 
-    matrix *new_matrix;
-    new_matrix = (matrix*) malloc(sizeof(struct matrix));
+    (mat *) = (matrix*) malloc(sizeof(struct matrix));
 
-    if (new_matrix == NULL) {
+    if ((mat *) == NULL) {
+        PyErr_SetString(PyExc_RuntimeError, "Memory allocation failed.");
         return -1;
     }
 
-    new_matrix->rows = rows;
-    new_matrix->cols = cols;
+    (mat *)->rows = rows;
+    (mat *)->cols = cols;
+
+    (mat *)->is_1d = 0
+    if (rows == 1 || cols == 1)
+        (mat *)->is_1d = 1; 
+
+    (mat *)->ref_cnt = 1;
+    (mat *)->parent = NULL;
     
-    if (rows == 1 || cols == 1) {
-        new_matrix->is_1d = 0;
-        //Ask what the default value of is_1d is?
-    }
+    (mat *)->data = (double **) malloc(sizeof(double *) * rows);
 
-    double **data = (double**) malloc(sizeof(double*) * rows);
-
-    if (data == NULL) {
-        free(new_matrix);
+    if ((mat *)->data == NULL) {
+        free((mat *));
+	PyErr_SetString(PyExc_RuntimeError, "Memory allocation failed.");
         return -1;
     }
 
     for (int i = 0; i < rows; i++) {
-        *(data + i) = (double*) malloc(sizeof(double) * cols);
-        //Free data here? Ask on Piazza later how a 2D double array is implemented.
-    }
-    
-    //Initialize all the values of the matrix to 0.0
-    for (int i = 0; i < rows; i++) {
-        for(int j = 0; j < cols; j++) {
-            *(*(data+i)+j) = 0.0;
-        }
+        (mat *)->data[i] = (double *) calloc(cols, sizeof(double))    
     }
 
-    new_matrix->data = data;
-    new_matrix->parent = NULL;  
-   
-    *mat = new_matrix;
     return 0;
 }
 

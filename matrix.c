@@ -253,13 +253,29 @@ int sub_matrix(matrix *result, matrix *mat1, matrix *mat2) {
 int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
     /* TODO: YOUR CODE HERE */
     if ((result->rows == mat1->rows) && (result->cols == mat2->cols) && (mat1->cols == mat2->rows)) { 
+        
+        double *data = (double*) malloc(sizeof(double) * mat1->rows * mat2->cols);
+        if (data == NULL) {
+            return 1;
+        }
+
         for (int i = 0; i < mat1->rows; i++) {
             for (int j = 0; j < mat2->cols; j++) {
+                int dot_product = 0;
                 for (int k = 0; k < mat2->rows; k++) {
-                    result->data[i][j] += mat1->data[i][k] * mat2->data[k][j];
+                    dot_product += mat1->data[i][k] * mat2->data[k][j];
                 }
+                *(data + (i * mat2->cols) + j) = dot_product;
             }
         }
+
+        for (int i = 0; i < mat1->rows; i++) {
+            for (int j = 0; j < mat2->cols; j++) {
+                result->data[i][j] = *(data + (i * mat2->cols) + j);
+            }
+        }
+
+        free(data);
 
         return 0;
     }
@@ -274,28 +290,24 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
  */
 int pow_matrix(matrix *result, matrix *mat, int pow) {
     /* TODO: YOUR CODE HERE */
+    /*
+     * Inspired from https://www.hackerearth.com/practice/notes/matrix-exponentiation-1/
+     */
+
     if (pow < 0 || (mat->rows != mat->cols)) {
         return 1;
     }
 
-    //If matrix to the 0th power, it is the identity matrix
-    if (pow == 0) {
-        for (int i = 0; i < mat->rows; i++) {
-            result->data[i][i] = 1;
-        }
-        return 0;
+    for (int i = 0; i < result->rows; i++) {
+        set(result, i, i, 1);
     }
 
-    //temp_matrix = mat
-    //allocate_matrix(matrix **mat, int rows, int cols) {
-
-    for (int n = 1; n < pow; n++) {
-        if (n == 1) {
-            mul_matrix(result, mat, mat);
-        } else {
-            //TODO: Bug here. 
+    while (pow > 0) {
+        if (pow % 2 == 1) {
             mul_matrix(result, result, mat);
-        }
+        }  
+        mul_matrix(mat, mat, mat);
+        pow = pow / 2;
     }
 
     return 0;

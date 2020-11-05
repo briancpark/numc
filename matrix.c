@@ -92,7 +92,14 @@ int allocate_matrix(matrix **mat, int rows, int cols) {
 
     for (int i = 0; i < rows; i++) {
         (*mat)->data[i] = (double *) calloc(cols, sizeof(double));
-        //Ask what to do when malloc/calloc fails in the inner loop.
+        
+        if ((*mat)->data[i] == NULL) {
+            free((*mat)->data);
+            free((*mat));
+            PyErr_SetString(PyExc_RuntimeError, "Memory allocation failed.");
+            return -1;
+        }
+        //Ask what to do when malloc/calloc fails in the inner loop. (e.g. Do I need to NULL check per every iteration?)
     }
 
     return 0;
@@ -138,7 +145,6 @@ int allocate_matrix_ref(matrix **mat, matrix *from, int row_offset, int col_offs
     (*mat)->ref_cnt = 0;
     (*mat)->parent = from;
 
-
     (*mat)->data = from->data + col_offset + row_offset;
 
     return 0;
@@ -153,21 +159,18 @@ int allocate_matrix_ref(matrix **mat, matrix *from, int row_offset, int col_offs
  */
 void deallocate_matrix(matrix *mat) {
     /* TODO: YOUR CODE HERE */
+    // The process of deallocating is much similar to deallocating/freeing a linked list in C
+    
     if (mat == NULL) {
         return;
-    }
-    
-    if (mat->parent == NULL && mat->ref_cnt <= 1) {
+    } else if (mat->parent == NULL && mat->ref_cnt <= 1) {
         free(mat->data);
         free(mat);
-    } else if(mat->ref_cnt > 0) {
+    } else if (mat->parent != NULL && mat->parent->ref_cnt <= 1) {
+        deallocate_matrix(mat->parent);
+        free(mat);
+    } else {
         mat->ref_cnt--;
-    } else { 
-        if (mat->parent->ref_cnt <= 1) {
-            free(mat->parent->data);
-            free(mat->parent);
-        }
-        free(mat);        
     }
 }    
 
@@ -213,7 +216,7 @@ int add_matrix(matrix *result, matrix *mat1, matrix *mat2) {
         (result->cols == mat1->cols && mat1->cols == mat2->cols)) {
         for (int i = 0; i < mat1->rows; i++) {
             for (int j = 0; j < mat2->cols; j++) {
-                result->data[i][j] = mat1->data[i][j] + mat2->data[i][j];
+                set(result, i, j, get(mat1, i, j) + get(mat2, i, j));
             }
         }
         return 0;
@@ -231,7 +234,7 @@ int sub_matrix(matrix *result, matrix *mat1, matrix *mat2) {
         (result->cols == mat1->cols && mat1->cols == mat2->cols)) {
         for (int i = 0; i < mat1->rows; i++) {
             for (int j = 0; j < mat1->cols; j++) {
-                result->data[i][j] = mat1->data[i][j] - mat2->data[i][j];
+                set(result, i, j, get(mat1, i, j) - get(mat2, i, j));
             }
         }
         return 0;
@@ -257,7 +260,7 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
             for (int j = 0; j < mat2->cols; j++) {
                 int dot_product = 0;
                 for (int k = 0; k < mat2->rows; k++) {
-                    dot_product += mat1->data[i][k] * mat2->data[k][j];
+                    dot_product += get(mat1, i, k) * get(mat2, k, j);
                 }
                 *(data + (i * mat2->cols) + j) = dot_product;
             }
@@ -265,7 +268,7 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
 
         for (int i = 0; i < mat1->rows; i++) {
             for (int j = 0; j < mat2->cols; j++) {
-                result->data[i][j] = *(data + (i * mat2->cols) + j);
+                set(result, i, j, *(data + (i * mat2->cols) + j));
             }
         }
 
@@ -283,36 +286,32 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
  */
 int pow_matrix(matrix *result, matrix *mat, int pow) {
     /* TODO: YOUR CODE HERE */
-    /* Inspired from https://www.hackerearth.com/practice/notes/matrix-exponentiation-1/
-     */
-
-    if (pow < 0 || (mat->rows != mat->cols)) {
-        return 1;
-    }
-
-    matrix *A = NULL;
-    allocate_matrix(&A, mat->rows, mat->cols);
-    for (int i = 0; i < mat->rows; i++) {
-        for (int j = 0; j < mat->cols; j++) {
-            A->data[i][j] = mat->data[i][j];
-        }
-    }
-
-    allocate_matrix(&result, A->rows, A->cols);
-
-    for (int i = 0; i < result->rows; i++) {
-        set(result, i, i, 1);
-    }
+    // Inspired from https://www.hackerearth.com/practice/notes/matrix-exponentiation-1/ 
     
-    while (pow > 0) {
-        if (pow % 2 == 1) {
-            mul_matrix(result, result, A);
-        }  
-        mul_matrix(A, A, A);
-        pow = pow >> 1;
-    }
+    if (pow >= 0 || (mat->rows == mat->cols)) {
 
-    return 0;
+        for (int i = 0; i < result->rows; i++) {
+            set(result, i, i, 1);
+        }
+         
+        while (pow > 0) {
+            mul_matrix(result, result, mat);
+            pow--;
+        }
+        
+       /* 
+        while (pow > 0) {
+            if (pow & 1) {
+                mul_matrix(result, result, mat);
+            } 
+            mul_matrix(mat, mat, mat);
+            pow = pow / 2;
+        }
+        */
+        
+        return 0;
+    }
+    return 1;
 }
 
 /*

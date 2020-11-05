@@ -286,20 +286,30 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
  */
 int pow_matrix(matrix *result, matrix *mat, int pow) {
     /* TODO: YOUR CODE HERE */
-    // Inspired from https://www.hackerearth.com/practice/notes/matrix-exponentiation-1/ 
+    // Divide and conquer algorithm inspired from https://www.hackerearth.com/practice/notes/matrix-exponentiation-1/ 
     
     if (pow >= 0 || (mat->rows == mat->cols)) {
-
+        
+        //Make a copy of matrix
+        matrix *ret = NULL;
+        allocate_matrix(&ret, mat->rows, mat->cols);
+        
         for (int i = 0; i < result->rows; i++) {
-            set(result, i, i, 1);
+            set(ret, i, i, 1);
         }
          
         while (pow > 0) {
-            mul_matrix(result, result, mat);
+            mul_matrix(ret, ret, mat);
             pow--;
         }
+
+        for (int i = 0; i < result->rows; i++) {
+            for (int j = 0; j < result->cols; j++) {
+                set(result, i, j, get(ret, i, j));
+            }
+        }
         
-       /* 
+        /* 
         while (pow > 0) {
             if (pow & 1) {
                 mul_matrix(result, result, mat);

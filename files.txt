@@ -1,0 +1,1 @@
+/home/cc/cs61c/fl20/class/cs61c-acb/proj/proj4/.venv/lib/python3.6/site-packages/numc-1.0.egg-info

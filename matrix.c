@@ -221,7 +221,8 @@ int add_matrix(matrix *result, matrix *mat1, matrix *mat2) {
         }
         return 0;
     }
-    return 1;
+    PyErr_SetString(PyExc_TypeError, "Invalid dimensions");
+    return -1;
 }
 
 /*
@@ -239,7 +240,8 @@ int sub_matrix(matrix *result, matrix *mat1, matrix *mat2) {
         }
         return 0;
     }
-    return 1;
+    PyErr_SetString(PyExc_TypeError, "Invalid dimensions");
+    return -1;
 }
 
 /*
@@ -276,7 +278,8 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
 
         return 0;
     }
-    return 1;
+    PyErr_SetString(PyExc_TypeError, "Invalid dimensions");
+    return -1;
 }
 
 /*
@@ -321,7 +324,8 @@ int pow_matrix(matrix *result, matrix *mat, int pow) {
         
         return 0;
     }
-    return 1;
+    PyErr_SetString(PyExc_TypeError, "Invalid dimensions");
+    return -1;
 }
 
 /*
@@ -337,6 +341,7 @@ int neg_matrix(matrix *result, matrix *mat) {
         }
         return 0;
     }
+    PyErr_SetString(PyExc_TypeError, "Invalid dimensions");
     return 1;
 }
 
@@ -354,5 +359,6 @@ int abs_matrix(matrix *result, matrix *mat) {
         }
         return 0;
     }
-    return 1;
+    PyErr_SetString(PyExc_TypeError, "Invalid dimensions");
+    return -1;
 }

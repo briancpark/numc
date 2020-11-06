@@ -8,7 +8,11 @@ def main():
 	# You may find this reference helpful: https://docs.python.org/3.6/extending/building.html
 	# TODO: YOUR CODE HERE
     
-	module1 = Extension('numc', sources=['num.c', 'matrix.c'], extra_compile_args=CFLAGS, extra_link_args = LDFLAGS)
+	module = Extension('numc', 
+        sources=['numc.c', 'matrix.c'], 
+        extra_compile_args=CFLAGS, 
+        extra_link_args=LDFLAGS, 
+        include_dirs=['/usr/include/python3.6m'])
 
 	setup(name='numc',
           version='1.0',
@@ -16,7 +20,8 @@ def main():
           long_description='CS 61C Project 4 on Parallelism', 
           author='Brian Park and Kaelyn Kim',
           author_email='briancpark@berkeley.edu',
-          url='https://cs61c.org/fa20/projects/proj4/')
+          url='https://cs61c.org/fa20/projects/proj4/',
+          ext_modules=[module])
 
 if __name__ == "__main__":
     main()

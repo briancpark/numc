@@ -279,7 +279,43 @@ PyObject *Matrix61c_repr(PyObject *self) {
  * self, and the second operand can be obtained by casting `args`.
  */
 PyObject *Matrix61c_add(Matrix61c* self, PyObject* args) {
-    /* TODO: YOUR CODE HERE */
+    /* TODO: YOUR CODE HERE */    
+    if (!PyObject_TypeCheck(args, &Matrix61cType)) {
+        PyErr_SetString(PyExc_TypeError, "Argument is not a matrix type!");
+        return NULL;
+    }
+
+    if (PyObject_RichCompareBool(self->shape, ((Matrix61c*) args)->shape, Py_NE)) {
+        PyErr_SetString(PyExc_ValueError, "Matrix dimensions mismatch!");
+        return NULL;
+    }
+
+    matrix *sum = NULL;
+    int allocate_error = allocate_matrix(&sum, self->mat->rows, self->mat->cols);
+
+    switch (allocate_error) {
+        case -2:
+            PyErr_SetString(PyExc_TypeError, "Nonpositive dimensions!");
+            return NULL;
+        case -1:
+            PyErr_SetString(PyExc_RuntimeError, "Memory allocation failed!");
+            return NULL;
+    }
+
+    int add_error = add_matrix(sum, self->mat, ((Matrix61c*) args)->mat);
+
+    if (add_error) {
+        deallocate_matrix(sum);
+        //TODO: Rethink this later, seems redundant, but keeping it for sake of abstraction
+        PyErr_SetString(PyExc_ValueError, "Matrix dimensions mismatch!");
+        return NULL;
+    }
+
+    Matrix61c *sum_object = (Matrix61c*) Matrix61c_new(&Matrix61cType, NULL, NULL);
+    sum_object->mat = sum;
+    sum_object->shape = PyTuple_Pack(2, PyLong_FromLong(sum->rows), PyLong_FromLong(sum->cols));
+
+    return (PyObject*) sum_object;
 }
 
 /*
@@ -325,6 +361,12 @@ PyObject *Matrix61c_pow(Matrix61c *self, PyObject *pow, PyObject *optional) {
  */
 PyNumberMethods Matrix61c_as_number = {
     /* TODO: YOUR CODE HERE */
+   .nb_add = (binaryfunc) &Matrix61c_add,
+   .nb_subtract = (binaryfunc) &Matrix61c_sub,
+   .nb_multiply = (binaryfunc) &Matrix61c_multiply,
+   .nb_negative = (unaryfunc) &Matrix61c_neg,
+   .nb_absolute = (unaryfunc) &Matrix61c_abs,
+   .nb_power = (ternaryfunc) &Matrix61c_pow
 };
 
 
@@ -345,6 +387,23 @@ PyObject *Matrix61c_set_value(Matrix61c *self, PyObject* args) {
  */
 PyObject *Matrix61c_get_value(Matrix61c *self, PyObject* args) {
     /* TODO: YOUR CODE HERE */
+    PyObject *rows = NULL;
+    PyObject *cols = NULL;
+
+    if (PyArg_UnpackTuple(args, "args", 1, 2, &rows, &cols)) {
+        if ((PyLong_AsLong(rows) > self->mat->rows) || 
+            (PyLong_AsLong(rows) < 0) || 
+            (PyLong_AsLong(cols) > self->mat->cols) || 
+            (PyLong_AsLong(cols) < 0)) {
+            PyErr_SetString(PyExc_TypeError, "Invalid indices");
+            return NULL;
+        } else {
+            double ret = get(self->mat, PyLong_AsLong(rows), PyLong_AsLong(cols));
+            return PyFloat_FromDouble(ret);
+        }
+    }
+    PyErr_SetString(PyExc_TypeError, "Invalid parameters");
+    return NULL;
 }
 
 /*
@@ -355,6 +414,8 @@ PyObject *Matrix61c_get_value(Matrix61c *self, PyObject* args) {
  */
 PyMethodDef Matrix61c_methods[] = {
     /* TODO: YOUR CODE HERE */
+    {"set", (PyCFunction) Matrix61c_set_value, METH_VARARGS, NULL},
+    {"get", (PyCFunction) Matrix61c_get_value, METH_VARARGS, NULL},
     {NULL, NULL, 0, NULL}
 };
 

@@ -1,6 +1,5 @@
 from utils import *
 from unittest import TestCase
-import random
 
 """
 For each operation, you should write tests to test  on matrices of different sizes.
@@ -44,8 +43,8 @@ class TestAdd(TestCase):
     def test_fuzz_add(self):
         print()
         for n in range(10): #increase n as desirable
-            row = random.randint(1, 100) #change the range as desirable
-            col = random.randint(1, 100)
+            row = np.random.randint(1, 100) #change the range as desirable
+            col = np.random.randint(1, 100)
             dp_mat1, nc_mat1 = rand_dp_nc_matrix(row, col, seed=0)
             dp_mat2, nc_mat2 = rand_dp_nc_matrix(row, col, seed=1)
             is_correct, speed_up = compute([dp_mat1, dp_mat2], [nc_mat1, nc_mat2], "add")
@@ -89,8 +88,8 @@ class TestSub(TestCase):
     def test_fuzz_sub(self):
         print()
         for n in range(10): #increase n as desirable
-            row = random.randint(1, 100) #change the range as desirable
-            col = random.randint(1, 100)
+            row = np.random.randint(1, 100) #change the range as desirable
+            col = np.random.randint(1, 100)
             dp_mat1, nc_mat1 = rand_dp_nc_matrix(row, col, seed=0)
             dp_mat2, nc_mat2 = rand_dp_nc_matrix(row, col, seed=1)
             is_correct, speed_up = compute([dp_mat1, dp_mat2], [nc_mat1, nc_mat2], "sub")

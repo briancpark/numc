@@ -324,6 +324,42 @@ PyObject *Matrix61c_add(Matrix61c* self, PyObject* args) {
  */
 PyObject *Matrix61c_sub(Matrix61c* self, PyObject* args) {
     /* TODO: YOUR CODE HERE */
+    if (!PyObject_TypeCheck(args, &Matrix61cType)) {
+        PyErr_SetString(PyExc_TypeError, "Argument is not a matrix type!");
+        return NULL;
+    }
+
+    if (PyObject_RichCompareBool(self->shape, ((Matrix61c*) args)->shape, Py_NE)) {
+        PyErr_SetString(PyExc_ValueError, "Matrix dimensions mismatch!");
+        return NULL;
+    }
+
+    matrix *difference = NULL;
+    int allocate_error = allocate_matrix(&difference, self->mat->rows, self->mat->cols);
+
+    switch (allocate_error) {
+        case -2:
+            PyErr_SetString(PyExc_TypeError, "Nonpositive dimensions!");
+            return NULL;
+        case -1:
+            PyErr_SetString(PyExc_RuntimeError, "Memory allocation failed!");
+            return NULL;
+    }
+
+    int sub_error = sub_matrix(difference, self->mat, ((Matrix61c*) args)->mat);
+
+    if (sub_error) {
+        deallocate_matrix(difference);
+        //TODO: Rethink this later, seems redundant, but keeping it for sake of abstraction
+        PyErr_SetString(PyExc_ValueError, "Matrix dimensions mismatch!");
+        return NULL;
+    }
+
+    Matrix61c *difference_object = (Matrix61c*) Matrix61c_new(&Matrix61cType, NULL, NULL);
+    difference_object->mat = difference;
+    difference_object->shape = PyTuple_Pack(2, PyLong_FromLong(difference->rows), PyLong_FromLong(difference->cols));
+
+    return (PyObject*) difference_object;
 }
 
 /*

@@ -51,6 +51,16 @@ class TestAdd(TestCase):
             self.assertTrue(is_correct)
             print_speedup(speed_up)
 
+    def test_incorrect_dimension_add(self):
+        dp_mat1, nc_mat1 = rand_dp_nc_matrix(2, 4, seed=0)
+        dp_mat2, nc_mat2 = rand_dp_nc_matrix(4, 2, seed=1)
+        self.assertRaises(ValueError, compute, [dp_mat1, dp_mat2], [nc_mat1, nc_mat2], "add")
+
+    def test_incorrect_type_add(self):
+        dp_mat1, nc_mat1 = rand_dp_nc_matrix(2, 2, seed=0)
+        dp_mat2, nc_mat2 = rand_dp_nc_matrix(2, 2, seed=1)
+        self.assertRaises(TypeError, compute, [dp_mat1, dp_mat2], [nc_mat1, 3], "add")
+
 class TestSub(TestCase):
     def test_small_sub(self):
         # TODO: YOUR CODE HERE
@@ -95,6 +105,16 @@ class TestSub(TestCase):
             is_correct, speed_up = compute([dp_mat1, dp_mat2], [nc_mat1, nc_mat2], "sub")
             self.assertTrue(is_correct)
             print_speedup(speed_up)
+
+    def test_incorrect_dimension_sub(self):
+        dp_mat1, nc_mat1 = rand_dp_nc_matrix(2, 4, seed=0)
+        dp_mat2, nc_mat2 = rand_dp_nc_matrix(4, 2, seed=1)
+        self.assertRaises(ValueError, compute, [dp_mat1, dp_mat2], [nc_mat1, nc_mat2], "sub")
+
+    def test_incorrect_type_sub(self):
+        dp_mat1, nc_mat1 = rand_dp_nc_matrix(2, 2, seed=0)
+        dp_mat2, nc_mat2 = rand_dp_nc_matrix(2, 2, seed=1)
+        self.assertRaises(TypeError, compute, [dp_mat1, dp_mat2], [nc_mat1, 3], "sub")
 
 class TestAbs(TestCase):
     def test_small_abs(self):

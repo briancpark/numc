@@ -293,13 +293,8 @@ PyObject *Matrix61c_add(Matrix61c* self, PyObject* args) {
     matrix *sum = NULL;
     int allocate_error = allocate_matrix(&sum, self->mat->rows, self->mat->cols);
 
-    switch (allocate_error) {
-        case -2:
-            PyErr_SetString(PyExc_TypeError, "Nonpositive dimensions!");
-            return NULL;
-        case -1:
-            PyErr_SetString(PyExc_RuntimeError, "Memory allocation failed!");
-            return NULL;
+    if (allocate_error) {
+        return NULL;
     }
 
     int add_error = add_matrix(sum, self->mat, ((Matrix61c*) args)->mat);
@@ -337,13 +332,8 @@ PyObject *Matrix61c_sub(Matrix61c* self, PyObject* args) {
     matrix *difference = NULL;
     int allocate_error = allocate_matrix(&difference, self->mat->rows, self->mat->cols);
 
-    switch (allocate_error) {
-        case -2:
-            PyErr_SetString(PyExc_TypeError, "Nonpositive dimensions!");
-            return NULL;
-        case -1:
-            PyErr_SetString(PyExc_RuntimeError, "Memory allocation failed!");
-            return NULL;
+    if (allocate_error) {
+        return NULL;
     }
 
     int sub_error = sub_matrix(difference, self->mat, ((Matrix61c*) args)->mat);
@@ -379,15 +369,10 @@ PyObject *Matrix61c_multiply(Matrix61c* self, PyObject *args) {
     }
 
     matrix *product = NULL;
-    int allocate_error = allocate_matrix(&product, self->mat->rows, self->mat->cols);
+    int allocate_error = allocate_matrix(&product, self->mat->rows, ((Matrix61c*) args)->mat->rows);
 
-    switch (allocate_error) {
-        case -2:
-            PyErr_SetString(PyExc_TypeError, "Nonpositive dimensions!");
-            return NULL;
-        case -1:
-            PyErr_SetString(PyExc_RuntimeError, "Memory allocation failed!");
-            return NULL;
+    if (allocate_error) {
+        return NULL;
     }
 
     int mul_error = mul_matrix(product, self->mat, ((Matrix61c*) args)->mat);
@@ -450,6 +435,14 @@ PyNumberMethods Matrix61c_as_number = {
  */
 PyObject *Matrix61c_set_value(Matrix61c *self, PyObject* args) {
     /* TODO: YOUR CODE HERE */
+    PyObject *rows = NULL;
+    PyObject *cols = NULL;
+    PyObject *val = NULL;
+    
+    if (PyArg_UnpackTuple(args, "args", 1, 3, &rows, &cols, &val)) {
+        set(self->mat, (int) PyLong_AsLong(rows), (int) PyLong_AsLong(cols), PyLong_AsLong(val));
+        return Py_None;
+    }
 }
 
 /*
@@ -470,7 +463,7 @@ PyObject *Matrix61c_get_value(Matrix61c *self, PyObject* args) {
             PyErr_SetString(PyExc_IndexError, "Invalid indices");
             return NULL;
         } else {
-            double ret = get(self->mat, PyLong_AsLong(rows), PyLong_AsLong(cols));
+            double ret = get(self->mat, (int) PyLong_AsLong(rows), (int) PyLong_AsLong(cols));
             return PyFloat_FromDouble(ret);
         }
     }

@@ -59,15 +59,13 @@ void rand_matrix(matrix *result, unsigned int seed, double low, double high) {
  */
 int allocate_matrix(matrix **mat, int rows, int cols) {
     /* TODO: YOUR CODE HERE */
-    if (rows <= 0 || cols <= 0) {
-        PyErr_SetString(PyExc_TypeError, "Negative index");
-        return -1;
+    if (rows < 1 || cols < 1) {
+        return -2;
     }
 
     (*mat) = (matrix*) malloc(sizeof(struct matrix));
 
     if ((*mat) == NULL) {
-        PyErr_SetString(PyExc_RuntimeError, "Memory allocation failed.");
         return -1;
     }
 
@@ -86,7 +84,6 @@ int allocate_matrix(matrix **mat, int rows, int cols) {
 
     if ((*mat)->data == NULL) {
         free((*mat));
-	    PyErr_SetString(PyExc_RuntimeError, "Memory allocation failed.");
         return -1;
     }
 
@@ -96,7 +93,6 @@ int allocate_matrix(matrix **mat, int rows, int cols) {
         if ((*mat)->data[i] == NULL) {
             free((*mat)->data);
             free((*mat));
-            PyErr_SetString(PyExc_RuntimeError, "Memory allocation failed.");
             return -1;
         }
         //Ask what to do when malloc/calloc fails in the inner loop. (e.g. Do I need to NULL check per every iteration?)
@@ -221,7 +217,6 @@ int add_matrix(matrix *result, matrix *mat1, matrix *mat2) {
         }
         return 0;
     }
-    PyErr_SetString(PyExc_TypeError, "Invalid dimensions");
     return -1;
 }
 
@@ -278,7 +273,6 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
 
         return 0;
     }
-    PyErr_SetString(PyExc_TypeError, "Invalid dimensions");
     return -1;
 }
 

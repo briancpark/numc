@@ -156,14 +156,6 @@ class TestMul(TestCase):
         self.assertTrue(is_correct)
         print_speedup(speed_up)
 
-    def test_medium_mul(self):
-        # TODO: YOUR CODE HERE
-        pass
-
-    def test_large_mul(self):
-        # TODO: YOUR CODE HERE
-        pass
-
 class TestPow(TestCase):
     def test_small_pow(self):
         # TODO: YOUR CODE HERE

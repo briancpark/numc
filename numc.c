@@ -368,6 +368,42 @@ PyObject *Matrix61c_sub(Matrix61c* self, PyObject* args) {
  */
 PyObject *Matrix61c_multiply(Matrix61c* self, PyObject *args) {
     /* TODO: YOUR CODE HERE */
+    if (!PyObject_TypeCheck(args, &Matrix61cType)) {
+        PyErr_SetString(PyExc_TypeError, "Argument is not a matrix type!");
+        return NULL;
+    }
+
+    if (self->mat->cols != ((Matrix61c*) args)->mat->rows) {
+        PyErr_SetString(PyExc_ValueError, "Matrix dimensions mismatch for matrix multiplication!");
+        return NULL;
+    }
+
+    matrix *product = NULL;
+    int allocate_error = allocate_matrix(&product, self->mat->rows, self->mat->cols);
+
+    switch (allocate_error) {
+        case -2:
+            PyErr_SetString(PyExc_TypeError, "Nonpositive dimensions!");
+            return NULL;
+        case -1:
+            PyErr_SetString(PyExc_RuntimeError, "Memory allocation failed!");
+            return NULL;
+    }
+
+    int mul_error = mul_matrix(product, self->mat, ((Matrix61c*) args)->mat);
+
+    if (mul_error) {
+        deallocate_matrix(product);
+        //TODO: Rethink this later, seems redundant, but keeping it for sake of abstraction
+        PyErr_SetString(PyExc_ValueError, "Matrix dimensions mismatch for matrix multiplication!");
+        return NULL;
+    }
+
+    Matrix61c *product_object = (Matrix61c*) Matrix61c_new(&Matrix61cType, NULL, NULL);
+    product_object->mat = product;
+    product_object->shape = PyTuple_Pack(2, PyLong_FromLong(product->rows), PyLong_FromLong(product->cols));
+
+    return (PyObject*) product_object;
 }
 
 /*

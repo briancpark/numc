@@ -467,14 +467,14 @@ PyObject *Matrix61c_get_value(Matrix61c *self, PyObject* args) {
             (PyLong_AsLong(rows) < 0) || 
             (PyLong_AsLong(cols) > self->mat->cols) || 
             (PyLong_AsLong(cols) < 0)) {
-            PyErr_SetString(PyExc_TypeError, "Invalid indices");
+            PyErr_SetString(IndexError, "Invalid indices");
             return NULL;
         } else {
             double ret = get(self->mat, PyLong_AsLong(rows), PyLong_AsLong(cols));
             return PyFloat_FromDouble(ret);
         }
     }
-    PyErr_SetString(PyExc_TypeError, "Invalid parameters");
+    PyErr_SetString(TypeError, "Invalid parameters");
     return NULL;
 }
 

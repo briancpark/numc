@@ -466,7 +466,7 @@ PyObject *Matrix61c_pow(Matrix61c *self, PyObject *pow, PyObject *optional) {
     int pow_error = pow_matrix(power, self->mat, n);
 
     if (pow_error) {
-        deallocate_matrix(pow);
+        deallocate_matrix(power);
         return NULL;
     }
 

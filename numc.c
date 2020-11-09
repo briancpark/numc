@@ -455,6 +455,26 @@ PyObject *Matrix61c_abs(Matrix61c *self) {
  */
 PyObject *Matrix61c_pow(Matrix61c *self, PyObject *pow, PyObject *optional) {
     /* TODO: YOUR CODE HERE */
+    matrix *power = NULL;
+    int allocate_error = allocate_matrix(&power, self->mat->rows, self->mat->rows);
+
+    if (allocate_error) {
+        return NULL;
+    }
+
+    int n = (int) PyLong_AsLong(pow);
+    int pow_error = pow_matrix(power, self->mat, n);
+
+    if (pow_error) {
+        deallocate_matrix(pow);
+        return NULL;
+    }
+
+    Matrix61c *pow_object = (Matrix61c*) Matrix61c_new(&Matrix61cType, NULL, NULL);
+    pow_object->mat = power;
+    pow_object->shape = PyTuple_Pack(2, PyLong_FromLong(power->rows), PyLong_FromLong(power->cols));
+
+    return (PyObject*) pow_object;
 }
 
 /*

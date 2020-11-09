@@ -429,6 +429,25 @@ PyObject *Matrix61c_neg(Matrix61c* self) {
  */
 PyObject *Matrix61c_abs(Matrix61c *self) {
     /* TODO: YOUR CODE HERE */
+    matrix *abs = NULL;
+    int allocate_error = allocate_matrix(&abs, self->mat->rows, self->mat->rows);
+
+    if (allocate_error) {
+        return NULL;
+    }
+
+    int abs_error = abs_matrix(abs, self->mat);
+
+    if (abs_error) {
+        deallocate_matrix(abs);
+        return NULL;
+    }
+
+    Matrix61c *abs_object = (Matrix61c*) Matrix61c_new(&Matrix61cType, NULL, NULL);
+    abs_object->mat = abs;
+    abs_object->shape = PyTuple_Pack(2, PyLong_FromLong(abs->rows), PyLong_FromLong(abs->cols));
+
+    return (PyObject*) abs_object;
 }
 
 /*

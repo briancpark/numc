@@ -403,6 +403,25 @@ PyObject *Matrix61c_multiply(Matrix61c* self, PyObject *args) {
  */
 PyObject *Matrix61c_neg(Matrix61c* self) {
     /* TODO: YOUR CODE HERE */
+    matrix *neg = NULL;
+    int allocate_error = allocate_matrix(&neg, self->mat->rows, self->mat->rows);
+
+    if (allocate_error) {
+        return NULL;
+    }
+
+    int neg_error = neg_matrix(neg, self->mat);
+
+    if (neg_error) {
+        deallocate_matrix(neg);
+        return NULL;
+    }
+
+    Matrix61c *neg_object = (Matrix61c*) Matrix61c_new(&Matrix61cType, NULL, NULL);
+    neg_object->mat = neg;
+    neg_object->shape = PyTuple_Pack(2, PyLong_FromLong(neg->rows), PyLong_FromLong(neg->cols));
+
+    return (PyObject*) neg_object;
 }
 
 /*

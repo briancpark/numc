@@ -556,6 +556,24 @@ PyMethodDef Matrix61c_methods[] = {
  */
 PyObject *Matrix61c_subscript(Matrix61c* self, PyObject* key) {
     /* TODO: YOUR CODE HERE */
+    //PyObject *row_slice = NULL;
+    //PyObject *col_slice = NULL;
+    
+    //PyArg_UnpackTuple(key, "args", 1, 2, &row_slice, &col_slice);
+    PyObject* slice1;
+    PyObject* slice2; 
+    slice1 = PyTuple_GetItem(key, 0);
+    slice2 = PyTuple_GetItem(key, 1);
+
+    Py_ssize_t *start = NULL;
+    Py_ssize_t *stop = NULL;
+    Py_ssize_t *step = NULL;
+    Py_ssize_t *slicelength = NULL;
+
+    PySlice_GetIndicesEx((PySliceObject*) slice1, self->mat->rows, start, stop, step, slicelength);
+
+    matrix *slice = NULL;
+    //int allocate_error = allocate_matrix_ref(&slice, self->mat, offset, offset, self->mat->rows, self->mat->rows);    
 }
 
 /*

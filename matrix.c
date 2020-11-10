@@ -94,12 +94,14 @@ int allocate_matrix(matrix **mat, int rows, int cols) {
         (*mat)->data[i] = (double *) calloc(cols, sizeof(double));
         
         if ((*mat)->data[i] == NULL) {
+            for (int j = 0; j < i; j++) {
+                free((*mat)->data[j]);
+            }
             free((*mat)->data);
             free((*mat));
             PyErr_SetString(PyExc_RuntimeError, "Memory allocation failed!");
             return -1;
         }
-        //Ask what to do when malloc/calloc fails in the inner loop. (e.g. Do I need to NULL check per every iteration?)
     }
 
     return 0;

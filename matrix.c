@@ -116,7 +116,7 @@ int allocate_matrix_ref(matrix **mat, matrix *from, int row_offset, int col_offs
                         int rows, int cols) {
     /* TODO: YOUR CODE HERE */
     if (row_offset > rows || col_offset > cols) {
-        PyErr_SetString(PyExc_TypeError, "Out of bound slicing.");
+        PyErr_SetString(PyExc_IndexError, "Index out of range");
         return -1;
     }
 

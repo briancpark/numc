@@ -609,7 +609,6 @@ PyObject *Matrix61c_subscript(Matrix61c* self, PyObject* key) {
         PySlice_GetIndicesEx((PySliceObject*) row_slice, self->mat->rows, &row_start, &row_stop, &row_step, &row_slicelength);
         PySlice_GetIndicesEx((PySliceObject*) col_slice, self->mat->cols, &col_start, &col_stop, &col_step, &col_slicelength);
 
-        //TODO: Fix indexing bug
         int allocate_ref_error = allocate_matrix_ref(&slice, self->mat, row_start, col_start, row_stop - row_start, col_stop - col_start);
         
         if (allocate_ref_error) {

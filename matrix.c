@@ -115,10 +115,13 @@ int allocate_matrix(matrix **mat, int rows, int cols) {
 int allocate_matrix_ref(matrix **mat, matrix *from, int row_offset, int col_offset,
                         int rows, int cols) {
     /* TODO: YOUR CODE HERE */
+
+    /* TODO: May not even need this, but check what IndexError really correlates to
     if (row_offset > rows || col_offset > cols) {
         PyErr_SetString(PyExc_IndexError, "Index out of range");
         return -1;
     }
+    */
 
     if (rows <= 0 || cols <= 0) {
         PyErr_SetString(PyExc_TypeError, "Negative index");
@@ -141,11 +144,15 @@ int allocate_matrix_ref(matrix **mat, matrix *from, int row_offset, int col_offs
         (*mat)->is_1d = 0;
     }
 
-    from->ref_cnt += 1;
+    from->ref_cnt++;
     (*mat)->ref_cnt = 0;
     (*mat)->parent = from;
 
-    (*mat)->data = from->data + col_offset + row_offset;
+    (*mat)->data = from->data + row_offset;
+
+    for (int i = 0; i < rows; i++) {
+        (*mat)->data[i] = from->data[i + row_offset] + col_offset;
+    }
 
     return 0;
 }

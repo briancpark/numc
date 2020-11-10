@@ -566,7 +566,15 @@ PyObject *Matrix61c_subscript(Matrix61c* self, PyObject* key) {
 
     if (PyLong_Check(key)) {
         //When key is an int
-        int allocate_ref_error = allocate_matrix_ref(&slice, self->mat, PyLong_AsLong(key), 0, 1, self->mat->cols);
+        int allocate_ref_error;
+
+        if (self->mat->is_1d && self->mat->rows == 1) {
+            return PyFloat_FromDouble(get(self->mat, 0, PyLong_AsLong(key)));
+        } else if (self->mat->is_1d && self->mat->cols == 1) {
+            return PyFloat_FromDouble(get(self->mat, PyLong_AsLong(key), 0));
+        } else {
+            allocate_ref_error = allocate_matrix_ref(&slice, self->mat, PyLong_AsLong(key), 0, 1, self->mat->cols);
+        }
         
         if (allocate_ref_error) {
             deallocate_matrix(slice);

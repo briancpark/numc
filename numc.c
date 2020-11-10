@@ -557,6 +557,7 @@ PyMethodDef Matrix61c_methods[] = {
 PyObject *Matrix61c_subscript(Matrix61c* self, PyObject* key) {
     /* TODO: YOUR CODE HERE */
     //key can be a integer, tuple, or list of tuples
+    //TODO: rigorously check later for errors, for now focus on making it work.
     matrix *slice = NULL;
 
     if (PyLong_Check(key)) {
@@ -567,50 +568,53 @@ PyObject *Matrix61c_subscript(Matrix61c* self, PyObject* key) {
             deallocate_matrix(slice);
             return NULL;
         }
-    } else if (PyTuple_Check(key)) {
+    } else if (PySlice_Check(key)) {
         //A single slice
-        PyObject *index = NULL;
-        PyObject *index_offset = NULL;
+        Py_ssize_t start = 0;
+        Py_ssize_t stop = 0;
+        Py_ssize_t step = 0;
+        Py_ssize_t slicelength = 0;
 
-        PyArg_UnpackTuple(key, "args", 2, 2, &index, &index_offset);
+        PySlice_GetIndicesEx((PySliceObject*) key, self->mat->rows, &start, &stop, &step, &slicelength);
 
-        int i = (int) index;
-        int i_offset = (int) index_offset;
+        int allocate_ref_error = allocate_matrix_ref(&slice, self->mat, start, 0, stop - start, self->mat->cols);
+        
+        if (allocate_ref_error) {
+            deallocate_matrix(slice);
+            return NULL;
+        }
+    } else if (PyTuple_Check(key)){
+        //When key is now a tuple of slices
+        PyObject *row_slice = NULL;
+        PyObject *col_slice = NULL;
+        if (!PyArg_UnpackTuple(key, "key", 2, 2, &row_slice, &col_slice)) {
+            //TODO: Print a python error here
+            return NULL;
+        }
 
-        int allocate_ref_error = allocate_matrix_ref(&slice, self->mat, PyLong_AsLong(index), 0, PyLong_AsLong(index_offset), self->mat->cols);
+        Py_ssize_t row_start = 0;
+        Py_ssize_t row_stop = 0;
+        Py_ssize_t row_step = 0;
+        Py_ssize_t row_slicelength = 0;
+
+        Py_ssize_t col_start = 0;
+        Py_ssize_t col_stop = 0;
+        Py_ssize_t col_step = 0;
+        Py_ssize_t col_slicelength = 0;
+
+        PySlice_GetIndicesEx((PySliceObject*) row_slice, self->mat->rows, &row_start, &row_stop, &row_step, &row_slicelength);
+        PySlice_GetIndicesEx((PySliceObject*) col_slice, self->mat->cols, &col_start, &col_stop, &col_step, &col_slicelength);
+
+        //TODO: Fix indexing bug
+        int allocate_ref_error = allocate_matrix_ref(&slice, self->mat, row_start, col_start, row_stop - row_start, col_stop - col_start);
         
         if (allocate_ref_error) {
             deallocate_matrix(slice);
             return NULL;
         }
     } else {
-        //When key is a tuple or list of tuples?
-        //Unimplemented
+        //A null case.... handle an error here later.
         return NULL;
-
-        //PyObject *row_slice = NULL;
-        //PyObject *col_slice = NULL;
-        
-        //PyArg_UnpackTuple(key, "args", 1, 2, &row_slice, &col_slice);
-        PyObject* slice1;
-        PyObject* slice2; 
-        slice1 = PyTuple_GetItem(key, 0);
-        slice2 = PyTuple_GetItem(key, 1);
-
-        Py_ssize_t *start = NULL;
-        Py_ssize_t *stop = NULL;
-        Py_ssize_t *step = NULL;
-        Py_ssize_t *slicelength = NULL;
-
-        PySlice_GetIndicesEx((PySliceObject*) key, self->mat->rows, start, stop, step, slicelength);
-
-        matrix *slice = NULL;
-        int allocate_ref_error = allocate_matrix_ref(&slice, self->mat, step, step, self->mat->rows, self->mat->rows);    
-
-        if (allocate_ref_error) {
-            deallocate_matrix(slice);
-            return NULL;
-        }
     }
 
     Matrix61c *slice_object = (Matrix61c*) Matrix61c_new(&Matrix61cType, NULL, NULL);

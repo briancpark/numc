@@ -556,7 +556,11 @@ PyMethodDef Matrix61c_methods[] = {
  */
 PyObject *Matrix61c_subscript(Matrix61c* self, PyObject* key) {
     /* TODO: YOUR CODE HERE */
-    //key can be a integer, tuple, or list of tuples
+    /* Key can be a integer, tuple, or list of tuples
+     *
+     * How to handle slice object parsing was inspired from https://stackoverflow.com/questions/23214380/how-to-pass-a-tuple-of-slice-objects-to-c-via-the-python-c-api
+     */
+
     //TODO: rigorously check later for errors, for now focus on making it work.
     matrix *slice = NULL;
 

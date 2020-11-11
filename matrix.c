@@ -361,7 +361,7 @@ int abs_matrix(matrix *result, matrix *mat) {
     if ((result->rows == mat->rows) && (result->cols == mat->cols)) {
         for (int i = 0; i < mat->rows; i++) {
             for (int j = 0; j < mat->cols; j++) { 
-                result->data[i][j] = abs(mat->data[i][j]);
+                result->data[i][j] = fabs(mat->data[i][j]);
             }
         }
         return 0;

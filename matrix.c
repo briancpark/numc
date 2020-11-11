@@ -210,7 +210,7 @@ void fill_matrix(matrix *mat, double val) {
     int cols = mat->cols;
     for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
-            set(mat, i, j, val);
+            mat->data[i][j] = val;
         }
     }
 }
@@ -340,13 +340,10 @@ int pow_matrix(matrix *result, matrix *mat, int pow) {
  * Return 0 upon success and a nonzero value upon failure.
  */
 int neg_matrix(matrix *result, matrix *mat) {
-    int rows = mat->rows;
-    int cols = mat->cols;
-
-    if ((result->rows == rows) && (result->cols == cols)) {
-        for (int i = 0; i < rows; i++) {
-            for (int j = 0; j < cols; j++) {
-                int val = (-1.0) * (get(mat, i, j));
+    if ((result->rows == mat->rows) && (result->cols == mat->cols)) {
+        for (int i = 0; i < mat->rows; i++) {
+            for (int j = 0; j < mat->cols; j++) {
+                result->data[i][j] = (-1.0) * mat->data[i][j];
             }
         }
         return 0;
@@ -360,14 +357,11 @@ int neg_matrix(matrix *result, matrix *mat) {
  * Return 0 upon success and a nonzero value upon failure.
  */
 int abs_matrix(matrix *result, matrix *mat) {
-    int rows = mat->rows;
-    int cols = mat->cols;
-
-    if ((result->rows == rows) && (result->cols == cols)) {
-        for (int i = 0; i < rows; i++) {
-            for (int j = 0; j < cols; j++) { 
-                int val = abs(get(mat, i, j));
-                result->data[i][j] = val; 
+    /* TODO: YOUR CODE HERE */
+    if ((result->rows == mat->rows) && (result->cols == mat->cols)) {
+        for (int i = 0; i < mat->rows; i++) {
+            for (int j = 0; j < mat->cols; j++) { 
+                result->data[i][j] = abs(mat->data[i][j]);
             }
         }
         return 0;

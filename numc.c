@@ -385,7 +385,7 @@ PyObject *Matrix61c_multiply(Matrix61c* self, PyObject *args) {
         return NULL;
     }
 
-    if (mat->cols != ((Matrix61c*) args)->mat->rows) {
+    if (self->mat->cols != ((Matrix61c*) args)->mat->rows) {
         PyErr_SetString(PyExc_ValueError, "Matrix dimensions mismatch for matrix multiplication!");
         return NULL;
     }
@@ -395,7 +395,7 @@ PyObject *Matrix61c_multiply(Matrix61c* self, PyObject *args) {
     int allocate_error = allocate_matrix(&product, mat->rows, ((Matrix61c*) args)->mat->cols);
 
     if (allocate_error == -1) {
-        PyError_SetString(PyExc_TypeError, "Allocation failed!");
+        PyErr_SetString(PyExc_TypeError, "Allocation failed!");
         return NULL;
     }
 
@@ -430,14 +430,14 @@ PyObject *Matrix61c_neg(Matrix61c* self) {
     int allocate_error = allocate_matrix(&neg, mat->rows, mat->cols);
 
     if (allocate_error == -1) {
-        PyError_SetString(PyExc_TypeError, "Allocation failed!");
+        PyErr_SetString(PyExc_TypeError, "Allocation failed!");
         return NULL;
     }
 
     int neg_error = neg_matrix(neg, mat);
 
     if (neg_error) {
-        PyError_SetString(PyExc_TypeError, "Negation failed!");
+        PyErr_SetString(PyExc_TypeError, "Negation failed!");
         deallocate_matrix(neg);
         return NULL;
     }
@@ -464,14 +464,14 @@ PyObject *Matrix61c_abs(Matrix61c *self) {
     int allocate_error = allocate_matrix(&abs, mat->rows, mat->cols);
 
     if (allocate_error == -1) {
-        PyError_SetString(PyExc_TypeError, "Allocation failed!");
+        PyErr_SetString(PyExc_TypeError, "Allocation failed!");
         return NULL;
     }
 
     int abs_error = abs_matrix(abs, mat);
 
     if (abs_error == -1) {
-        PyError_SetString(PyExc_TypeError, "Absolute value failed!");
+        PyErr_SetString(PyExc_TypeError, "Absolute value failed!");
         deallocate_matrix(abs);
         return NULL;
     }
@@ -498,7 +498,7 @@ PyObject *Matrix61c_pow(Matrix61c *self, PyObject *pow, PyObject *optional) {
     int allocate_error = allocate_matrix(&power, mat->rows, mat->cols);
 
     if (allocate_error == -1) {
-        PyError_SetString(PyExc_TypeError, "Allocation failed!");
+        PyErr_SetString(PyExc_TypeError, "Allocation failed!");
         return NULL;
     }
 
@@ -506,7 +506,7 @@ PyObject *Matrix61c_pow(Matrix61c *self, PyObject *pow, PyObject *optional) {
     int pow_error = pow_matrix(power, mat, n);
 
     if (pow_error == -1) {
-        PyError_SetString(PyExc_TypeError, "Power failed!");
+        PyErr_SetString(PyExc_TypeError, "Power failed!");
         deallocate_matrix(power);
         return NULL;
     }

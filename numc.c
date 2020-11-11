@@ -559,6 +559,7 @@ PyObject *Matrix61c_set_value(Matrix61c *self, PyObject* args) {
             return Py_None;
         }
     }
+    return Py_None;
 }
 
 /*
@@ -643,7 +644,7 @@ PyObject *Matrix61c_subscript(Matrix61c* self, PyObject* key) {
         Py_ssize_t step = 0;
         Py_ssize_t slicelength = 0;
 
-        PySlice_GetIndicesEx((PySliceObject*) key, self->mat->rows, &start, &stop, &step, &slicelength);
+        PySlice_GetIndicesEx(key, self->mat->rows, &start, &stop, &step, &slicelength);
 
         int allocate_ref_error = allocate_matrix_ref(&slice, self->mat, start, 0, stop - start, self->mat->cols);
         
@@ -670,8 +671,8 @@ PyObject *Matrix61c_subscript(Matrix61c* self, PyObject* key) {
         Py_ssize_t col_step = 0;
         Py_ssize_t col_slicelength = 0;
 
-        PySlice_GetIndicesEx((PySliceObject*) row_slice, self->mat->rows, &row_start, &row_stop, &row_step, &row_slicelength);
-        PySlice_GetIndicesEx((PySliceObject*) col_slice, self->mat->cols, &col_start, &col_stop, &col_step, &col_slicelength);
+        PySlice_GetIndicesEx(row_slice, self->mat->rows, &row_start, &row_stop, &row_step, &row_slicelength);
+        PySlice_GetIndicesEx(col_slice, self->mat->cols, &col_start, &col_stop, &col_step, &col_slicelength);
 
         int allocate_ref_error = allocate_matrix_ref(&slice, self->mat, row_start, col_start, row_stop - row_start, col_stop - col_start);
         
@@ -696,8 +697,6 @@ PyObject *Matrix61c_subscript(Matrix61c* self, PyObject* key) {
  */
 int Matrix61c_set_subscript(Matrix61c* self, PyObject *key, PyObject *v) {
     /* TODO: YOUR CODE HERE */
-    matrix *slice = NULL;
-
     if (PyLong_Check(key) && PyList_Check(v)) {
         //When key is an int and value is list
         for (int j = 0; j < PyList_Size(v); j++) {
@@ -716,7 +715,7 @@ int Matrix61c_set_subscript(Matrix61c* self, PyObject *key, PyObject *v) {
         PyObject *col_slice = NULL;
         if (!PyArg_UnpackTuple(key, "key", 2, 2, &row_slice, &col_slice)) {
             //TODO: Print a python error here
-            return NULL;
+            return -1;
         }
 
         Py_ssize_t row_start = 0;
@@ -729,30 +728,70 @@ int Matrix61c_set_subscript(Matrix61c* self, PyObject *key, PyObject *v) {
         Py_ssize_t col_step = 0;
         Py_ssize_t col_slicelength = 0;
 
-        PySlice_GetIndicesEx((PySliceObject*) row_slice, self->mat->rows, &row_start, &row_stop, &row_step, &row_slicelength);
-        PySlice_GetIndicesEx((PySliceObject*) col_slice, self->mat->cols, &col_start, &col_stop, &col_step, &col_slicelength);
+        if (PySlice_Check(row_slice)) {
+            //Row is a slice type
+            PySlice_GetIndicesEx(row_slice, self->mat->rows, &row_start, &row_stop, &row_step, &row_slicelength);
+        } else { //PyLong_Check(row_slice) doesn't work, Ask a TA if we can inject undefined symbols a[1:?] etc.
+            //Row is an int type
+            row_start = PyLong_AsLong(row_slice);
+            row_stop = row_start + 1;
+        } 
 
+        if (PySlice_Check(col_slice)) {
+            //Row is a slice type
+            PySlice_GetIndicesEx(col_slice, self->mat->cols, &col_start, &col_stop, &col_step, &col_slicelength);
+        } else { //PyLong_Check(col_slice) doesn't work, Ask a TA if we can inject undefined symbols a[1:?] etc.
+            //Row is an int type
+            col_start = PyLong_AsLong(col_slice);
+            col_stop = col_start + 1;
+        } 
+
+        //Handle all the various slicing here!
         if (PyFloat_Check(v) || PyLong_Check(v)) {
-            for (int i = row_start; i < row_stop; i++) {
-                for (int j = col_start; j < col_stop; j++) {
+            //Slicing replacement with just one singular value
+            for (int i = row_start; i < row_stop - row_start; i++) {
+                for (int j = col_start; j < col_stop - col_start; j++) {
                     set(self->mat, i, j, PyLong_AsLong(v));
                 }
             }
-        } else if (PyList_Check(v)) {
+        } else if (PyList_Check(PyList_GetItem(v, 0))) {
+            //Slicing replacement with 2d array
             
-            if (PyList_Size(v) == self->mat->rows) {
-
+            //TODO: fix bugs here
+            /*
+            int n = 0;
+            for (int i = row_start; i < row_stop - row_start; i++) {
+                for (int j = col_start; j < col_stop - col_start; j++) {
+                    set(self->mat, i, j, PyLong_AsLong(PyList_GetItem(v, n)));
+                    n++;
+                }
             }
+            */
+        } else if (PyList_Check(v) && !PyList_Check(PyList_GetItem(v, 0))) {
+            //Slicing replacement with 1d rows/ cols
 
+            //Handle rows
+            if (PyList_Size(v) == (col_stop - col_start) && (row_stop - row_start) == 1) {
+                for (int i = col_start; i < col_stop - col_start; i++) {
+                    for (int j = 0; j < PyList_Size(v); j++) {
+                        set(self->mat, row_start, i, PyLong_AsLong(PyList_GetItem(v, j)));
+                    }
+                }
+            //Handle cols
+            } else if (PyList_Size(v) == (row_stop - row_start) && (col_stop - col_start) == 1) {
+                for (int i = row_start; i < row_stop - row_start; i++) {
+                    for (int j = 0; j < PyList_Size(v); j++) {
+                        set(self->mat, i, col_start, PyLong_AsLong(PyList_GetItem(v, j)));
+                    }
+                }
+            }
         } else {
-
+            //Error handling here
         }
-        
     } else {
         //A null case.... handle an error here later.
-        return NULL;
+        return -1;
     }
-
     return 0;
 }
 

@@ -756,17 +756,11 @@ int Matrix61c_set_subscript(Matrix61c* self, PyObject *key, PyObject *v) {
             }
         } else if (PyList_Check(PyList_GetItem(v, 0))) {
             //Slicing replacement with 2d array
-            
-            //TODO: fix bugs here
-            /*
-            int n = 0;
-            for (int i = row_start; i < row_stop - row_start; i++) {
-                for (int j = col_start; j < col_stop - col_start; j++) {
-                    set(self->mat, i, j, PyLong_AsLong(PyList_GetItem(v, n)));
-                    n++;
+            for (int i = 0; i < row_stop; i++) {
+                for (int j = 0; j < col_stop; j++) {
+                    set(self->mat, i + row_start, j + col_start, PyLong_AsLong(PyList_GetItem(PyList_GetItem(v, i), j)));
                 }
             }
-            */
         } else if (PyList_Check(v) && !PyList_Check(PyList_GetItem(v, 0))) {
             //Slicing replacement with 1d rows/ cols
 

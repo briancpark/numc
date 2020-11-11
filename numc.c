@@ -640,6 +640,58 @@ PyObject *Matrix61c_subscript(Matrix61c* self, PyObject* key) {
  */
 int Matrix61c_set_subscript(Matrix61c* self, PyObject *key, PyObject *v) {
     /* TODO: YOUR CODE HERE */
+    matrix *slice = NULL;
+
+    if (PyLong_Check(key) && PyList_Check(v)) {
+        //When key is an int and value is list
+        for (int j = 0; j < PyList_Size(v); j++) {
+            set(self->mat, PyLong_AsLong(key), j, PyFloat_AsDouble(PyList_GetItem(v, j)));
+        }
+    } else if (PyLong_Check(key) && (PyFloat_Check(v) || PyLong_Check(v))) {
+        //A single slice and if matrix is 1d
+        if (self->mat->is_1d && self->mat->rows == 1) {
+            set(self->mat, 0, PyLong_AsLong(key), PyLong_AsLong(v));
+        } else if (self->mat->is_1d && self->mat->cols == 1) {
+            //TODO: check implementation here!
+            set(self->mat, 0, PyLong_AsLong(key), PyLong_AsLong(v));
+        }
+    } else if (PyTuple_Check(key)){
+        PyObject *row_slice = NULL;
+        PyObject *col_slice = NULL;
+        if (!PyArg_UnpackTuple(key, "key", 2, 2, &row_slice, &col_slice)) {
+            //TODO: Print a python error here
+            return NULL;
+        }
+
+        Py_ssize_t row_start = 0;
+        Py_ssize_t row_stop = 0;
+        Py_ssize_t row_step = 0;
+        Py_ssize_t row_slicelength = 0;
+
+        Py_ssize_t col_start = 0;
+        Py_ssize_t col_stop = 0;
+        Py_ssize_t col_step = 0;
+        Py_ssize_t col_slicelength = 0;
+
+        PySlice_GetIndicesEx((PySliceObject*) row_slice, self->mat->rows, &row_start, &row_stop, &row_step, &row_slicelength);
+        PySlice_GetIndicesEx((PySliceObject*) col_slice, self->mat->cols, &col_start, &col_stop, &col_step, &col_slicelength);
+
+        if (PyFloat_Check(v) || PyLong_Check(v)) {
+            for (int i = row_start; i < row_stop; i++) {
+                for (int j = col_start; j < col_stop; j++) {
+                    set(self->mat, i, j, PyLong_AsLong(v));
+                }
+            }
+        } else {
+
+        }
+        
+    } else {
+        //A null case.... handle an error here later.
+        return NULL;
+    }
+
+    return 0;
 }
 
 PyMappingMethods Matrix61c_mapping = {

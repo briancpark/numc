@@ -268,7 +268,7 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
 
         for (int i = 0; i < mat1->rows; i++) {
             for (int j = 0; j < mat2->cols; j++) {
-                int dot_product = 0;
+                double dot_product = 0;
                 for (int k = 0; k < mat2->rows; k++) {
                     dot_product += get(mat1, i, k) * get(mat2, k, j);
                 }

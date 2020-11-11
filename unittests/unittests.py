@@ -170,6 +170,7 @@ class TestNeg(TestCase):
         is_correct, speed_up = compute([dp_mat], [nc_mat], "neg")
         self.assertTrue(is_correct)
         print_speedup(speed_up)
+
     def test_medium_neg(self):
         # TODO: YOUR CODE HERE
         dp_mat, nc_mat = rand_dp_nc_matrix(243, 123, seed=0)
@@ -207,12 +208,45 @@ class TestMul(TestCase):
         # TODO: YOUR CODE HERE
         dp_mat1, nc_mat1 = rand_dp_nc_matrix(2, 2, seed=0)
         dp_mat2, nc_mat2 = rand_dp_nc_matrix(2, 2, seed=1)
-        #is_correct, speed_up = compute([dp_mat1, dp_mat2], [nc_mat1, nc_mat2], "mul")
-        print(nc_mat1)
-        print(nc_mat2)
-        print(nc_mat1 * nc_mat2)
-        #self.assertTrue(is_correct)
-        #print_speedup(speed_up)
+        is_correct, speed_up = compute([dp_mat1, dp_mat2], [nc_mat1, nc_mat2], "mul")
+        self.assertTrue(is_correct)
+        print_speedup(speed_up)
+    
+    def test_medium_mul(self):
+        # TODO: YOUR CODE HERE
+        dp_mat1, nc_mat1 = rand_dp_nc_matrix(123, 100, seed=0)
+        dp_mat2, nc_mat2 = rand_dp_nc_matrix(100, 321, seed=1)
+        is_correct, speed_up = compute([dp_mat1, dp_mat2], [nc_mat1, nc_mat2], "mul")
+        self.assertTrue(is_correct)
+        print_speedup(speed_up)
+
+    def test_large_mul(self):
+        # TODO: YOUR CODE HERE
+        dp_mat1, nc_mat1 = rand_dp_nc_matrix(1223, 1100, seed=0)
+        dp_mat2, nc_mat2 = rand_dp_nc_matrix(1100, 2321, seed=1)
+        is_correct, speed_up = compute([dp_mat1, dp_mat2], [nc_mat1, nc_mat2], "mul")
+        self.assertTrue(is_correct)
+        print_speedup(speed_up)
+
+    def test_fractional_scaling_mul(self):
+        print()
+        for n in range(1, scale): 
+            dp_mat1, nc_mat1 = rand_dp_nc_matrix(10 ** n, 10 ** n, seed=0)
+            dp_mat2, nc_mat2 = rand_dp_nc_matrix(10 ** n, 10 ** n, seed=1)
+            is_correct, speed_up = compute([dp_mat1, dp_mat2], [nc_mat1, nc_mat2], "mul")
+            self.assertTrue(is_correct)
+            print_speedup(speed_up)
+
+    def test_fuzz_mul(self):
+        print()
+        for n in range(fuzz_rep):
+            x = np.random.randint(1, fuzz)
+            y = np.random.randint(1, fuzz)
+            dp_mat1, nc_mat1 = rand_dp_nc_matrix(x, y, seed=0)
+            dp_mat2, nc_mat2 = rand_dp_nc_matrix(y, x, seed=1)
+            is_correct, speed_up = compute([dp_mat1, dp_mat2], [nc_mat1, nc_mat2], "mul")
+            self.assertTrue(is_correct)
+            print_speedup(speed_up)
 
 class TestPow(TestCase):
     def test_small_pow(self):
@@ -224,11 +258,19 @@ class TestPow(TestCase):
 
     def test_medium_pow(self):
         # TODO: YOUR CODE HERE
-        pass
+        dp_mat, nc_mat = rand_dp_nc_matrix(2, 2, seed=0)
+        is_correct, speed_up = compute([dp_mat, 10], [nc_mat, 10], "pow")
+        self.assertTrue(is_correct)
+        print_speedup(speed_up)
 
     def test_large_pow(self):
         # TODO: YOUR CODE HERE
-        pass
+        dp_mat, nc_mat = rand_dp_nc_matrix(2, 2, seed=0)
+        is_correct, speed_up = compute([dp_mat, 50], [nc_mat, 50], "pow")
+        self.assertTrue(is_correct)
+        print_speedup(speed_up)
+
+    #Come up with more clever tests later
 
 class TestGet(TestCase):
     def test_get(self):

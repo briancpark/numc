@@ -682,6 +682,12 @@ int Matrix61c_set_subscript(Matrix61c* self, PyObject *key, PyObject *v) {
                     set(self->mat, i, j, PyLong_AsLong(v));
                 }
             }
+        } else if (PyList_Check(v)) {
+            
+            if (PyList_Size(v) == self->mat->rows) {
+
+            }
+
         } else {
 
         }

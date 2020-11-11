@@ -467,8 +467,7 @@ PyObject *Matrix61c_abs(Matrix61c *self) {
 
     int abs_error = abs_matrix(abs, self->mat);
 
-    if (abs_error == -1) {
-        PyErr_SetString(PyExc_TypeError, "Absolute value failed!");
+    if (abs_error) {
         deallocate_matrix(abs);
         return NULL;
     }

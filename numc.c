@@ -765,10 +765,10 @@ int Matrix61c_set_subscript(Matrix61c* self, PyObject *key, PyObject *v) {
     } else if (PyLong_Check(key) && (PyFloat_Check(v) || PyLong_Check(v))) {
         //A single slice and if matrix is 1d
         if (self->mat->is_1d && self->mat->rows == 1) {
-            set(self->mat, 0, PyLong_AsLong(key), PyLong_AsLong(v));
+            set(self->mat, 0, PyLong_AsLong(key), PyFloat_AsDouble(v));
         } else if (self->mat->is_1d && self->mat->cols == 1) {
             //TODO: check implementation here!
-            set(self->mat, 0, PyLong_AsLong(key), PyLong_AsLong(v));
+            set(self->mat, 0, PyLong_AsLong(key),  PyFloat_AsDouble(v));
         }
     } else if (PyTuple_Check(key)){
         PyObject *row_slice = NULL;
@@ -811,14 +811,14 @@ int Matrix61c_set_subscript(Matrix61c* self, PyObject *key, PyObject *v) {
             //Slicing replacement with just one singular value
             for (int i = row_start; i < row_stop - row_start; i++) {
                 for (int j = col_start; j < col_stop - col_start; j++) {
-                    set(self->mat, i, j, PyLong_AsLong(v));
+                    set(self->mat, i, j, PyFloat_AsDouble(v));
                 }
             }
         } else if (PyList_Check(PyList_GetItem(v, 0))) {
             //Slicing replacement with 2d array
             for (int i = 0; i < row_stop; i++) {
                 for (int j = 0; j < col_stop; j++) {
-                    set(self->mat, i + row_start, j + col_start, PyLong_AsLong(PyList_GetItem(PyList_GetItem(v, i), j)));
+                    set(self->mat, i + row_start, j + col_start,  PyFloat_AsDouble(PyList_GetItem(PyList_GetItem(v, i), j)));
                 }
             }
         } else if (PyList_Check(v) && !PyList_Check(PyList_GetItem(v, 0))) {
@@ -829,7 +829,7 @@ int Matrix61c_set_subscript(Matrix61c* self, PyObject *key, PyObject *v) {
                 int j = 0;
                 for (int i = col_start; i < col_stop - col_start; i++) {
                     //for (int j = 0; j < PyList_Size(v); j++) {
-                        set(self->mat, row_start, i, PyLong_AsLong(PyList_GetItem(v, j)));
+                        set(self->mat, row_start, i,  PyFloat_AsDouble(PyList_GetItem(v, j)));
                     //}
                     j++;
                 }
@@ -838,7 +838,7 @@ int Matrix61c_set_subscript(Matrix61c* self, PyObject *key, PyObject *v) {
                 int j = 0;
                 for (int i = row_start; i < row_stop - row_start; i++) {
                     //for (int j = 0; j < PyList_Size(v); j++) {
-                        set(self->mat, i, col_start, PyLong_AsLong(PyList_GetItem(v, j)));
+                        set(self->mat, i, col_start, PyFloat_AsDouble(PyList_GetItem(v, j)));
                     //}
                     j++;
                 }

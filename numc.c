@@ -556,9 +556,9 @@ PyObject *Matrix61c_set_value(Matrix61c *self, PyObject* args) {
             return Py_None;
         }
 
-        if ((PyLong_AsLong(rows) > self->mat->rows) || 
+        if ((PyLong_AsLong(rows) >= self->mat->rows) || 
             (PyLong_AsLong(rows) < 0) || 
-            (PyLong_AsLong(cols) > self->mat->cols) || 
+            (PyLong_AsLong(cols) >= self->mat->cols) || 
             (PyLong_AsLong(cols) < 0)) {
             PyErr_SetString(PyExc_IndexError, "Indices out of range!");
             return Py_None;
@@ -595,9 +595,9 @@ PyObject *Matrix61c_get_value(Matrix61c *self, PyObject* args) {
             return NULL;
         } 
 
-        if ((PyLong_AsLong(rows) > self->mat->rows) || 
+        if ((PyLong_AsLong(rows) >= self->mat->rows) || 
             (PyLong_AsLong(rows) < 0) || 
-            (PyLong_AsLong(cols) > self->mat->cols) || 
+            (PyLong_AsLong(cols) >= self->mat->cols) || 
             (PyLong_AsLong(cols) < 0)) {
             PyErr_SetString(PyExc_IndexError, "Indices out of range!");
             return NULL;
@@ -765,10 +765,20 @@ int Matrix61c_set_subscript(Matrix61c* self, PyObject *key, PyObject *v) {
     } else if (PyLong_Check(key) && (PyFloat_Check(v) || PyLong_Check(v))) {
         //A single slice and if matrix is 1d
         if (self->mat->is_1d && self->mat->rows == 1) {
+            if (PyLong_AsLong(key) < 0 || PyLong_AsLong(key) >= self->mat->cols) {
+                PyErr_SetString(PyExc_IndexError, "Indices out of range!");
+                return -1;
+            }
             set(self->mat, 0, PyLong_AsLong(key), PyFloat_AsDouble(v));
+            return 0;
         } else if (self->mat->is_1d && self->mat->cols == 1) {
             //TODO: check implementation here!
+            if (PyLong_AsLong(key) < 0 || PyLong_AsLong(key) >= self->mat->rows) {
+                PyErr_SetString(PyExc_IndexError, "Indices out of range!");
+                return -1;
+            }
             set(self->mat, 0, PyLong_AsLong(key),  PyFloat_AsDouble(v));
+            return 0;
         }
     } else if (PyTuple_Check(key)){
         PyObject *row_slice = NULL;
@@ -809,10 +819,15 @@ int Matrix61c_set_subscript(Matrix61c* self, PyObject *key, PyObject *v) {
         //Handle all the various slicing here!
         if (PyFloat_Check(v) || PyLong_Check(v)) {
             //Slicing replacement with just one singular value
-            for (int i = row_start; i < row_stop - row_start; i++) {
-                for (int j = col_start; j < col_stop - col_start; j++) {
-                    set(self->mat, i, j, PyFloat_AsDouble(v));
+            if (col_stop - col_start < self->mat->cols && row_stop - row_start < self->mat->rows) {
+                for (int i = row_start; i < row_stop - row_start; i++) {
+                    for (int j = col_start; j < col_stop - col_start; j++) {
+                        set(self->mat, i, j, PyFloat_AsDouble(v));
+                    }
                 }
+            } else {
+                PyErr_SetString(PyExc_IndexError, "Indices out of range!");
+                return -1;
             }
         } else if (PyList_Check(PyList_GetItem(v, 0))) {
             //Slicing replacement with 2d array

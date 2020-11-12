@@ -564,7 +564,7 @@ PyObject *Matrix61c_set_value(Matrix61c *self, PyObject* args) {
             return Py_None;
         }
 
-        set(self->mat, (int) PyLong_AsLong(rows), (int) PyLong_AsLong(cols), PyFloat_AsDouble(val));
+        set(self->mat, PyLong_AsLong(rows), PyLong_AsLong(cols), PyFloat_AsDouble(val));
         return Py_None;
     } else {
         PyErr_SetString(PyExc_TypeError, "Incorrect number of arguements!");
@@ -636,7 +636,6 @@ PyObject *Matrix61c_subscript(Matrix61c* self, PyObject* key) {
      * How to handle slice object parsing was inspired from https://stackoverflow.com/questions/23214380/how-to-pass-a-tuple-of-slice-objects-to-c-via-the-python-c-api
      */
 
-    //TODO: rigorously check later for errors, for now focus on making it work.
     matrix *slice = NULL;
 
     if (PyLong_Check(key)) {
@@ -656,22 +655,40 @@ PyObject *Matrix61c_subscript(Matrix61c* self, PyObject* key) {
             return NULL;
         }
     } else if (PySlice_Check(key)) {
-        //A single slice
         Py_ssize_t start = 0;
         Py_ssize_t stop = 0;
         Py_ssize_t step = 0;
         Py_ssize_t slicelength = 0;
+        if (self->mat->is_1d && self->mat->rows == 1) {
+            int allocate_ref_error = allocate_matrix_ref(&slice, self->mat, 0, start, self->mat->rows, stop - start);
+            
+            if (allocate_ref_error) {
+                deallocate_matrix(slice);
+                return NULL;
+            }
+        } else if (self->mat->is_1d && self->mat->cols == 1) {
+            //A single slice
+            PySlice_GetIndicesEx(key, self->mat->rows, &start, &stop, &step, &slicelength);
 
-        PySlice_GetIndicesEx(key, self->mat->rows, &start, &stop, &step, &slicelength);
-
-        int allocate_ref_error = allocate_matrix_ref(&slice, self->mat, start, 0, stop - start, self->mat->cols);
-        
-        if (allocate_ref_error) {
-            deallocate_matrix(slice);
+            int allocate_ref_error = allocate_matrix_ref(&slice, self->mat, start, 0, stop - start, self->mat->cols);
+            
+            if (allocate_ref_error) {
+                deallocate_matrix(slice);
+                return NULL;
+            }
+        } 
+        if (step != 1) {
+            PyErr_SetString(PyExc_ValueError, "Slice info not valid!");
             return NULL;
+        
         }
     } else if (PyTuple_Check(key)){
         //When key is now a tuple of slices
+        if (self->mat->is_1d) {
+            PyErr_SetString(PyExc_TypeError, "1D matrices only support single slice!");
+            return NULL;
+        }
+        
         PyObject *row_slice = NULL;
         PyObject *col_slice = NULL;
         if (!PyArg_UnpackTuple(key, "key", 2, 2, &row_slice, &col_slice)) {
@@ -689,8 +706,33 @@ PyObject *Matrix61c_subscript(Matrix61c* self, PyObject* key) {
         Py_ssize_t col_step = 0;
         Py_ssize_t col_slicelength = 0;
 
-        PySlice_GetIndicesEx(row_slice, self->mat->rows, &row_start, &row_stop, &row_step, &row_slicelength);
-        PySlice_GetIndicesEx(col_slice, self->mat->cols, &col_start, &col_stop, &col_step, &col_slicelength);
+        if (PySlice_Check(row_slice)) {
+            //Row is a slice type
+            PySlice_GetIndicesEx(row_slice, self->mat->rows, &row_start, &row_stop, &row_step, &row_slicelength);
+        } else { //PyLong_Check(row_slice) doesn't work, Ask a TA if we can inject undefined symbols a[1:?] etc.
+            //Row is an int type
+            row_start = PyLong_AsLong(row_slice);
+            row_stop = row_start + 1;
+        } 
+
+        if (PySlice_Check(col_slice)) {
+            //Row is a slice type
+            PySlice_GetIndicesEx(col_slice, self->mat->cols, &col_start, &col_stop, &col_step, &col_slicelength);
+        } else { //PyLong_Check(col_slice) doesn't work, Ask a TA if we can inject undefined symbols a[1:?] etc.
+            //Row is an int type
+            col_start = PyLong_AsLong(col_slice);
+            col_stop = col_start + 1;
+        } 
+
+        if (row_step != 1 || col_step != 1) {
+            PyErr_SetString(PyExc_ValueError, "Slice info not valid!");
+            return NULL;
+        }
+
+        if ((PyLong_Check(row_slice) && PyLong_Check(col_slice)) || 
+            (row_stop - row_start == 1 && col_stop - col_start == 1)) {
+            return PyFloat_FromDouble(get(self->mat, row_start, col_start));
+        }
 
         int allocate_ref_error = allocate_matrix_ref(&slice, self->mat, row_start, col_start, row_stop - row_start, col_stop - col_start);
         

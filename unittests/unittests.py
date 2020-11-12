@@ -323,6 +323,34 @@ class TestGet(TestCase):
         self.assertEqual(round(dp_mat[rand_row][rand_col], decimal_places),
             round(nc_mat[rand_row][rand_col], decimal_places))
 
+    def test_slice_spec1_get(self):
+        a = nc.Matrix(3, 3)
+        b = dp.Matrix(3, 3)
+        self.assertEqual(a[0], b[0])
+        self.assertEqual(a[0:2, 0:2], b[0:2, 0:2])
+        self.assertEqual(a[0:2, 0], b[0:2, 0])  
+        self.assertEqual(a[0, 0], b[0, 0])
+
+        a = nc.Matrix(1, 3)
+        b = dp.Matrix(1, 3)
+        self.assertEqual(a[0], b[0])
+        self.assertEqual(a[0:2], b[0:2])
+        with self.assertRaises(TypeError):
+            a[0:1, 0:1]
+
+    def test_slice_spec2_get(self):
+        a = nc.Matrix(3, 3)
+        b = dp.Matrix(3, 3)
+        self.assertEqual(a[0][1], b[0][1])
+        self.assertEqual(a[0:1, 0:1], b[0:1, 0:1])
+
+    def test_slice_spec3_get(self):
+        a = nc.Matrix(4, 4)
+        with self.assertRaises(ValueError):        
+            a[0:4:2]
+        with self.assertRaises(ValueError):
+            a[0:0]
+        
 class TestSet(TestCase):
     def test_set(self):
         # TODO: YOUR CODE HERE

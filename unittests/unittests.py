@@ -248,6 +248,18 @@ class TestMul(TestCase):
             self.assertTrue(is_correct)
             print_speedup(speed_up)
 
+    def test_incorrect_dimension_mul(self):
+        dp_mat1, nc_mat1 = rand_dp_nc_matrix(2, 12, seed=0)
+        dp_mat2, nc_mat2 = rand_dp_nc_matrix(42, 1, seed=1)
+        with self.assertRaises(ValueError):
+            nc_mat1 * nc_mat2
+
+    def test_incorrect_type_mul(self):
+        dp_mat1, nc_mat1 = rand_dp_nc_matrix(2, 12, seed=0)
+        dp_mat2, nc_mat2 = rand_dp_nc_matrix(12, 4, seed=1)
+        with self.assertRaises(TypeError):
+            nc_mat1 * 2
+
 class TestPow(TestCase):
     def test_small_pow(self):
         # TODO: YOUR CODE HERE
@@ -270,7 +282,37 @@ class TestPow(TestCase):
         self.assertTrue(is_correct)
         print_speedup(speed_up)
 
-    #Come up with more clever tests later
+    def test_fractional_scaling_pow(self):
+        print()
+        for n in range(1, scale): 
+            dp_mat, nc_mat = rand_dp_nc_matrix(10 * n, 10 * n, seed=0)
+            is_correct, speed_up = compute([dp_mat, n - 1], [nc_mat, n - 1], "pow")
+            self.assertTrue(is_correct)
+            print_speedup(speed_up)
+
+    def test_fuzz_pow(self):
+        print()
+        for n in range(fuzz_rep):
+            p = np.random.randint(1, fuzz)
+            dp_mat, nc_mat = rand_dp_nc_matrix(100, 100, seed=0)
+            is_correct, speed_up = compute([dp_mat, p], [nc_mat, p], "pow")
+            self.assertTrue(is_correct)
+            print_speedup(speed_up)
+
+    def test_incorrect_dimension_pow(self):
+        dp_mat, nc_mat = rand_dp_nc_matrix(100, 120, seed=0)
+        with self.assertRaises(TypeError):
+            nc_mat ** 2
+
+    def test_incorrect_power_pow(self):
+        dp_mat, nc_mat = rand_dp_nc_matrix(100, 120, seed=0)
+        with self.assertRaises(TypeError):
+            nc_mat ** 2.1
+            
+    def test_incorrect_power_int_pow(self):
+        dp_mat, nc_mat = rand_dp_nc_matrix(100, 100, seed=0)
+        with self.assertRaises(ValueError):
+            nc_mat ** -1
 
 class TestGet(TestCase):
     def test_get(self):

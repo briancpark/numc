@@ -298,8 +298,14 @@ int pow_matrix(matrix *result, matrix *mat, int pow) {
     /* TODO: YOUR CODE HERE */
     // Divide and conquer algorithm inspired from https://www.hackerearth.com/practice/notes/matrix-exponentiation-1/ 
     
-    if (pow >= 0 || (mat->rows == mat->cols)) {
-        
+    if (pow < 0) {
+        //ValueError if a is not a square matrix or if pow is negative.
+        PyErr_SetString(PyExc_ValueError, "Power is negative!");
+        return -1;
+    } else if (mat->rows != mat->cols) {
+        PyErr_SetString(PyExc_TypeError, "Matrix is not square!");
+        return -1;
+    } else {
         //Make a copy of matrix
         matrix *ret = NULL;
         allocate_matrix(&ret, mat->rows, mat->cols);
@@ -331,8 +337,6 @@ int pow_matrix(matrix *result, matrix *mat, int pow) {
         
         return 0;
     }
-    PyErr_SetString(PyExc_TypeError, "Invalid dimensions");
-    return -1;
 }
 
 /*
@@ -348,7 +352,7 @@ int neg_matrix(matrix *result, matrix *mat) {
         }
         return 0;
     }
-    PyErr_SetString(PyExc_TypeError, "Invalid dimensions");
+    PyErr_SetString(PyExc_RuntimeError, "Invalid dimensions");
     return 1;
 }
 

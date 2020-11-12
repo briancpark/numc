@@ -642,6 +642,11 @@ PyObject *Matrix61c_subscript(Matrix61c* self, PyObject* key) {
         //When key is an int
         int allocate_ref_error;
 
+        if (PyLong_AsLong(key) < 0) {
+            PyErr_SetString(PyExc_IndexError, "Indices out of range!");
+            return NULL;
+        }
+
         if (self->mat->is_1d && self->mat->rows == 1) {
             return PyFloat_FromDouble(get(self->mat, 0, PyLong_AsLong(key)));
         } else if (self->mat->is_1d && self->mat->cols == 1) {

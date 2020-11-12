@@ -564,7 +564,7 @@ PyObject *Matrix61c_set_value(Matrix61c *self, PyObject* args) {
             return Py_None;
         }
 
-        set(self->mat, PyLong_AsLong(rows), PyLong_AsLong(cols), PyFloat_AsDouble(val));
+        set(self->mat, (int) PyLong_AsLong(rows), (int) PyLong_AsLong(cols), PyFloat_AsDouble(val));
         return Py_None;
     } else {
         PyErr_SetString(PyExc_TypeError, "Incorrect number of arguements!");

@@ -150,7 +150,7 @@ int allocate_matrix_ref(matrix **mat, matrix *from, int row_offset, int col_offs
     (*mat)->ref_cnt = 1;
     (*mat)->parent = from;
 
-    (*mat)->data = from->data + row_offset;
+    (*mat)->data = (double**) malloc(sizeof(double*) * rows);
 
     for (int i = 0; i < rows; i++) {
         (*mat)->data[i] = from->data[i + row_offset] + col_offset;

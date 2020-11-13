@@ -642,7 +642,7 @@ PyObject *Matrix61c_subscript(Matrix61c* self, PyObject* key) {
         //When key is an int
         int allocate_ref_error;
 
-        if (PyLong_AsLong(key) < 0) {
+        if (PyLong_AsLong(key) < 0 || PyLong_AsLong(key) > self->mat->rows) {
             PyErr_SetString(PyExc_IndexError, "Indices out of range!");
             return NULL;
         }

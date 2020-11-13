@@ -850,8 +850,8 @@ int Matrix61c_set_subscript(Matrix61c* self, PyObject *key, PyObject *v) {
             }
         } else if (PyList_Check(PyList_GetItem(v, 0))) {
             //Slicing replacement with 2d array
-            for (int i = row_start; i < row_stop - row_start; i++) {
-                for (int j = col_start; j < col_stop - col_start; j++) {
+            for (int i = row_start; i < row_stop; i++) {
+                for (int j = col_start; j < col_stop; j++) {
                     set(self->mat, i, j, PyFloat_AsDouble(PyList_GetItem(PyList_GetItem(v, i - row_start), j - col_start)));
                 }
             }

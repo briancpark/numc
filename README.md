@@ -29,3 +29,5 @@ Pretty simple, and straightforward. Skimming through the Python3 doc helped us s
 ## Task 4
 
 ## Task 5
+
+TAs/Tutors who helped us: Kunal Dutta, Luke Mujica, Jie Qiu

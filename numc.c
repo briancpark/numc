@@ -824,11 +824,12 @@ int Matrix61c_set_subscript(Matrix61c* self, PyObject *key, PyObject *v) {
         //Handle all the various slicing here!
         if (PyFloat_Check(v) || PyLong_Check(v)) {
             //Slicing replacement with just one singular value
-            if (col_stop - col_start < self->mat->cols && row_stop - row_start < self->mat->rows) {
-                for (int i = row_start; i < row_stop - row_start; i++) {
-                    for (int j = col_start; j < col_stop - col_start; j++) {
-                        set(self->mat, i, j, PyFloat_AsDouble(v));
-                    }
+            if (row_stop - row_start < self->mat->cols && col_stop - col_start < self->mat->rows) {
+                if (row_stop - row_start == 1 && col_stop - col_start == 1) {
+                    set(self->mat, row_start, col_start, PyFloat_AsDouble(v));
+                } else {
+                    PyErr_SetString(PyExc_TypeError, "Value is not valid!");
+                    return -1;
                 }
             } else {
                 PyErr_SetString(PyExc_IndexError, "Indices out of range!");

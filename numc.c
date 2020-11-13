@@ -543,7 +543,7 @@ PyObject *Matrix61c_set_value(Matrix61c *self, PyObject* args) {
     PyObject *cols = NULL;
     PyObject *val = NULL;
     
-    if (PyArg_UnpackTuple(args, "args", 1, 3, &rows, &cols, &val)) {
+    if (PyArg_UnpackTuple(args, "args", 3, 3, &rows, &cols, &val)) {
         // TypeError if the number of arguments parsed from args is not 3, 
         // if i and j are not integers, or if val is not a float or int.
         if (!PyLong_Check(rows) || !PyLong_Check(cols)) {
@@ -563,7 +563,10 @@ PyObject *Matrix61c_set_value(Matrix61c *self, PyObject* args) {
             PyErr_SetString(PyExc_IndexError, "Indices out of range!");
             return Py_None;
         }
-
+        if (PyLong_Check(val)) {
+            set(self->mat, (int) PyLong_AsLong(rows), (int) PyLong_AsLong(cols), PyLong_AsLong(val));
+            return Py_None;    
+        }
         set(self->mat, (int) PyLong_AsLong(rows), (int) PyLong_AsLong(cols), PyFloat_AsDouble(val));
         return Py_None;
     } else {
@@ -619,8 +622,8 @@ PyObject *Matrix61c_get_value(Matrix61c *self, PyObject* args) {
  */
 PyMethodDef Matrix61c_methods[] = {
     /* TODO: YOUR CODE HERE */
-    {"set", (PyCFunction) Matrix61c_set_value, METH_VARARGS, NULL},
-    {"get", (PyCFunction) Matrix61c_get_value, METH_VARARGS, NULL},
+    {"set", (PyCFunction) Matrix61c_set_value, METH_VARARGS, "set"},
+    {"get", (PyCFunction) Matrix61c_get_value, METH_VARARGS, "get"},
     {NULL, NULL, 0, NULL}
 };
 

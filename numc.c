@@ -642,7 +642,7 @@ PyObject *Matrix61c_subscript(Matrix61c* self, PyObject* key) {
         //When key is an int
         int allocate_ref_error;
 
-        if (PyLong_AsLong(key) < 0 || PyLong_AsLong(key) > self->mat->rows) {
+        if (PyLong_AsLong(key) < 0 || (PyLong_AsLong(key) > self->mat->rows && !self->mat->is_1d)) {
             PyErr_SetString(PyExc_IndexError, "Indices out of range!");
             return NULL;
         }
@@ -664,7 +664,9 @@ PyObject *Matrix61c_subscript(Matrix61c* self, PyObject* key) {
         Py_ssize_t stop = 0;
         Py_ssize_t step = 0;
         Py_ssize_t slicelength = 0;
+        
         if (self->mat->is_1d && self->mat->rows == 1) {
+            PySlice_GetIndicesEx(key, self->mat->cols, &start, &stop, &step, &slicelength);
             int allocate_ref_error = allocate_matrix_ref(&slice, self->mat, 0, start, self->mat->rows, stop - start);
             
             if (allocate_ref_error) {
@@ -674,7 +676,6 @@ PyObject *Matrix61c_subscript(Matrix61c* self, PyObject* key) {
         } else if (self->mat->is_1d && self->mat->cols == 1) {
             //A single slice
             PySlice_GetIndicesEx(key, self->mat->rows, &start, &stop, &step, &slicelength);
-
             int allocate_ref_error = allocate_matrix_ref(&slice, self->mat, start, 0, stop - start, self->mat->cols);
             
             if (allocate_ref_error) {
@@ -682,11 +683,11 @@ PyObject *Matrix61c_subscript(Matrix61c* self, PyObject* key) {
                 return NULL;
             }
         } 
-        if (step != 1) {
+        if ((step == 0 && !self->mat->is_1d) || step > 1) {
             PyErr_SetString(PyExc_ValueError, "Slice info not valid!");
             return NULL;
-        
         }
+
     } else if (PyTuple_Check(key)){
         //When key is now a tuple of slices
         if (self->mat->is_1d) {
@@ -729,7 +730,7 @@ PyObject *Matrix61c_subscript(Matrix61c* self, PyObject* key) {
             col_stop = col_start + 1;
         } 
 
-        if (row_step != 1 || col_step != 1) {
+        if (row_step < 0 || row_step > 1 || col_step < 0 || col_step > 1) {
             PyErr_SetString(PyExc_ValueError, "Slice info not valid!");
             return NULL;
         }
@@ -752,7 +753,16 @@ PyObject *Matrix61c_subscript(Matrix61c* self, PyObject* key) {
 
     Matrix61c *slice_object = (Matrix61c*) Matrix61c_new(&Matrix61cType, NULL, NULL);
     slice_object->mat = slice;
-    slice_object->shape = PyTuple_Pack(2, PyLong_FromLong(slice->rows), PyLong_FromLong(slice->cols));
+
+    if (slice->rows == 1) {
+        slice->is_1d = 1;
+        slice_object->shape = PyTuple_Pack(1, PyLong_FromLong(slice->cols));
+    } else if (slice->cols == 1) {
+        slice->is_1d = 1;
+        slice_object->shape = PyTuple_Pack(1, PyLong_FromLong(slice->rows));
+    } else {
+        slice_object->shape = PyTuple_Pack(2, PyLong_FromLong(slice->rows), PyLong_FromLong(slice->cols));
+    }
 
     return (PyObject*) slice_object;
 }

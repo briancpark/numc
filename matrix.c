@@ -125,7 +125,7 @@ int allocate_matrix_ref(matrix **mat, matrix *from, int row_offset, int col_offs
     }
     */
 
-    if (rows <= 0 || cols <= 0) {
+    if (rows < 0 || cols < 0) {
         PyErr_SetString(PyExc_TypeError, "Negative index");
         return -1;
     }

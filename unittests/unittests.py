@@ -360,6 +360,75 @@ class TestSet(TestCase):
         self.assertEqual(round(dp_mat[rand_row][rand_col], decimal_places),
             round(nc_mat[rand_row][rand_col], decimal_places))
 
+    def test_set_error(self):
+        a = nc.Matrix(4, 4)
+        with self.assertRaises(IndexError):
+            a[-1][0] = 0
+        with self.assertRaises(IndexError):
+            a[0][-1] = 0
+        with self.assertRaises(IndexError):
+            a[5][0] = 0
+        with self.assertRaises(IndexError):
+            a[0][5] = 0
+
+    def test_slice_spec1_set(self):
+        a = nc.Matrix(3, 3)
+        b = dp.Matrix(3, 3)
+        a[0:1, 0:1] = 0.0
+        b[0:1, 0:1] = 0.0
+        self.assertEqual(a, b)
+        self.assertEqual(a.shape, b.shape)
+        a[:, 0] = [1, 1, 1] # Resulting slice is 1D
+        b[:, 0] = [1, 1, 1]
+        self.assertEqual(a, b)
+        self.assertEqual(a.shape, b.shape)
+        a[0, :] = [2, 2, 2] # Resulting slice is 1D
+        b[0, :] = [2, 2, 2]
+        self.assertEqual(a, b)
+        self.assertEqual(a.shape, b.shape)
+        a[0:2, 0:2] = [[1, 2], [3, 4]] # Resulting slice is 2D
+        b[0:2, 0:2] = [[1, 2], [3, 4]]
+        self.assertEqual(a, b)
+        self.assertEqual(a.shape, b.shape)
+        
+    def test_slice_spec2_set(self):
+        a = nc.Matrix(2, 2)
+        c = dp.Matrix(2, 2)
+        a[0:1, 0:1] = 1.0
+        c[0:1, 0:1] = 1.0
+        self.assertEqual(a, c)
+        self.assertEqual(a.shape, c.shape)
+        a[1] = [2, 2]
+        c[1] = [2, 2]
+        self.assertEqual(a, c)
+        self.assertEqual(a.shape, c.shape)
+        b = a[1]
+        d = c[1]
+        self.assertEqual(b, d)
+        self.assertEqual(b.shape, d.shape)
+        b[1] = 3
+        d[1] = 3
+        self.assertEqual(a, c)
+        self.assertEqual(a.shape, c.shape)
+        self.assertEqual(b, d)
+        self.assertEqual(b.shape, d.shape)
+        
+    def test_slice_spec3_set(self):
+        a = nc.Matrix(4, 4)
+        d = dp.Matrix(4, 4)
+        b = a[0:3, 0:3]
+        e = d[0:3, 0:3]
+        c = b[1:3, 1:3]
+        f = e[1:3, 1:3]
+        c[0] = [2, 2] # Changing c should change both a and b
+        f[0] = [2, 2]
+        self.assertEqual(c, f)
+        self.assertEqual(c.shape, f.shape)
+        self.assertEqual(b, e)
+        self.assertEqual(b.shape, e.shape)
+        self.assertEqual(a, d)
+        self.assertEqual(a.shape, d.shape)
+
 class TestShape(TestCase):
     def test_shape(self):
         dp_mat, nc_mat = rand_dp_nc_matrix(2, 2, seed=0)

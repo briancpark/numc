@@ -47,11 +47,13 @@ Hardest part were slicing, just due to the sheer complexity and *MANY* different
 We also kept failing `set()` for the most minor and funniest reason. Brian kept improving on slicing functionality, thinking that the autograder's set correctness test robustly tested on it. But turns our it was resolved in OH when Brian realized that set didn't have to be invoked through slicing. It could be invoked through `set(self, i, j, val)` in Python. The bug was just a simple error handling between `if (!PyLong_Check(val) || !PyFloat_Check(val))` to `if (!PyLong_Check(val) && !PyFloat_Check(val))` Even though time debugging it was fustrating, at least Brian made sure many slicing errors were handled and properly working. 
 
 ### Testing
-For robust testing, Brian made a simple bash script to compile and run all tests under the executable 
+After the core parts of Task 3 was implemented, we could finally move on to testing our `numc` library and ensure that it works correctly. The Python `unittest` framework can be abused through tactical testing and Brian added fuzz, scaling and fuzz repetition global parameters to scale up the testing when needed. Parameters were catiously set and tuned as Brian almost crashed an entire Hive server for running large tests. 
+
+For efficient TDD workflow, Brian made a simple bash script to compile and run all tests under the executable 
 ```
 ./skiddie.sh
 ```
-It will do everything in one line, because well... Brian is lazy and a script kiddie.
+It will do everything in one line, (load Python environment, clean, compile, and run unittests) because well... Brian is lazy and a script kiddie.
 
 ## Task 4
 

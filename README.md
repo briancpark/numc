@@ -49,7 +49,7 @@ We also kept failing `set()` for the most minor and funniest reason. Brian kept 
 ### Testing
 For robust testing, Brian made a simple bash script to compile and run all tests under the executable 
 ```
-./skiddie
+./skiddie.sh
 ```
 It will do everything in one line, because well... Brian is lazy and a script kiddie.
 

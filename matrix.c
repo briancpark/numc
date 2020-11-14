@@ -261,18 +261,16 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
     /* TODO: YOUR CODE HERE */
     if ((result->rows == mat1->rows) && (result->cols == mat2->cols) && (mat1->cols == mat2->rows)) { 
         
-        double *data = (double*) malloc(sizeof(double) * mat1->rows * mat2->cols);
+        double *data = (double*) calloc(mat1->rows * mat2->cols, sizeof(double));
         if (data == NULL) {
             return 1;
         }
 
-        for (int i = 0; i < mat1->rows; i++) {
-            for (int j = 0; j < mat2->cols; j++) {
-                double dot_product = 0;
-                for (int k = 0; k < mat2->rows; k++) {
-                    dot_product += get(mat1, i, k) * get(mat2, k, j);
+        for (int j = 0; j < mat2->cols; j++) {
+            for (int k = 0; k < mat2->rows; k++) {
+                for (int i = 0; i < mat1->rows; i++) {
+                    *(data + (i * mat2->cols) + j) += get(mat1, i, k) * get(mat2, k, j);
                 }
-                *(data + (i * mat2->cols) + j) = dot_product;
             }
         }
 
@@ -281,8 +279,6 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
                 set(result, i, j, *(data + (i * mat2->cols) + j));
             }
         }
-
-        free(data);
 
         return 0;
     }
@@ -307,6 +303,7 @@ int pow_matrix(matrix *result, matrix *mat, int pow) {
         return -1;
     } else {
         //Make a copy of matrix
+        //Temps needed to be made in order to prevent writing over existing matrices.
         matrix *ret = NULL;
         allocate_matrix(&ret, mat->rows, mat->cols);
         
@@ -314,9 +311,21 @@ int pow_matrix(matrix *result, matrix *mat, int pow) {
             set(ret, i, i, 1);
         }
          
+        matrix *A = NULL;
+        allocate_matrix(&A, mat->rows, mat->cols);
+
+        for (int i = 0; i < result->rows; i++) {
+            for (int j = 0; j < result->cols; j++) {
+                set(A, i, j, get(mat, i, j));
+            }
+        }
+        
         while (pow > 0) {
-            mul_matrix(ret, ret, mat);
-            pow--;
+            if (pow & 1) {
+                mul_matrix(ret, ret, A);
+            } 
+            mul_matrix(A, A, A);
+            pow = pow / 2;
         }
 
         for (int i = 0; i < result->rows; i++) {
@@ -324,16 +333,9 @@ int pow_matrix(matrix *result, matrix *mat, int pow) {
                 set(result, i, j, get(ret, i, j));
             }
         }
-        
-        /* 
-        while (pow > 0) {
-            if (pow & 1) {
-                mul_matrix(result, result, mat);
-            } 
-            mul_matrix(mat, mat, mat);
-            pow = pow / 2;
-        }
-        */
+
+        deallocate_matrix(ret);
+        deallocate_matrix(A);
         
         return 0;
     }

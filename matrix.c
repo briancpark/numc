@@ -223,11 +223,117 @@ int add_matrix(matrix *result, matrix *mat1, matrix *mat2) {
     /* TODO: YOUR CODE HERE */
     if ((result->rows == mat1->rows && mat1->rows == mat2->rows) && 
         (result->cols == mat1->cols && mat1->cols == mat2->cols)) {
+
+        /*
+        //Naive solution
         for (int i = 0; i < mat1->rows; i++) {
             for (int j = 0; j < mat2->cols; j++) {
-                set(result, i, j, get(mat1, i, j) + get(mat2, i, j));
+                result->data[i][j] = mat1->data[i][j] + mat2->data[i][j];
             }
         }
+        */
+        
+        //Unrolled naive
+        /*
+        for (int i = 0; i < mat1->rows; i++) {
+            for (int j = 0; j < mat2->cols / 4 * 4 ; j += 4) {
+                result->data[i][j] = mat1->data[i][j] + mat2->data[i][j];
+                result->data[i][j + 1] = mat1->data[i][j + 1] + mat2->data[i][j + 1];
+                result->data[i][j + 2] = mat1->data[i][j + 2] + mat2->data[i][j + 2];
+                result->data[i][j + 3] = mat1->data[i][j + 3] + mat2->data[i][j + 3];
+            }
+
+            for(int j = mat2->cols / 4 * 4; j < mat2->cols; j++) {
+                result->data[i][j] = mat1->data[i][j] + mat2->data[i][j];
+            }
+        }
+        */
+ 
+        /* SIMD Acceleration
+         * -Floating point should follow IEEE 754 (64 bit) 8 bytes standard
+         * -Thus 4 doubles will fit into 256bit vector
+         * -Intuitively, we should load vectors, add vectors to a new resultant vector, 
+         *  and then store the resultant vector back into memory (*result)
+         */
+        
+        /*
+        __m256d mat1_vector;
+        __m256d mat2_vector;
+        __m256d sum_vector;
+
+        for (int i = 0; i < mat1->rows; i++) {
+            double *pointer1 = mat1->data[i];
+            double *pointer2 = mat2->data[i];
+            double *result_pointer = result->data[i];
+            for (int j = 0; j < mat2->cols / 4 * 4; j += 4) {   
+                mat1_vector = _mm256_loadu_pd(pointer1);
+                mat2_vector = _mm256_loadu_pd(pointer2);
+
+                sum_vector = _mm256_add_pd(mat1_vector, mat2_vector);
+                
+                _mm256_storeu_pd(result_pointer, sum_vector);
+                pointer1 += 4;
+                pointer2 += 4;
+                result_pointer += 4;
+            }
+
+            for(int j = mat2->cols / 4 * 4; j < mat2->cols; j++) {
+                result->data[i][j] = mat1->data[i][j] + mat2->data[i][j];
+            }
+        }
+        */
+
+        // SIMD FULL Acceleration
+        // Still bottlenecked by outer for loop... 
+        // Will try to see if we can accelerate it through MIMD
+        __m256d mat1_vector;
+        __m256d mat2_vector;
+        __m256d sum_vector;
+
+        for (int i = 0; i < mat1->rows; i++) {
+            double *pointer1 = mat1->data[i];
+            double *pointer2 = mat2->data[i];
+            double *result_pointer = result->data[i];
+            for (int j = 0; j < mat2->cols / 16 * 16; j += 16) {   
+                mat1_vector = _mm256_loadu_pd(pointer1);
+                mat2_vector = _mm256_loadu_pd(pointer2);
+                sum_vector = _mm256_add_pd(mat1_vector, mat2_vector);
+                _mm256_storeu_pd(result_pointer, sum_vector);
+                pointer1 += 4;
+                pointer2 += 4;
+                result_pointer += 4;
+
+                mat1_vector = _mm256_loadu_pd(pointer1);
+                mat2_vector = _mm256_loadu_pd(pointer2);
+                sum_vector = _mm256_add_pd(mat1_vector, mat2_vector);
+                _mm256_storeu_pd(result_pointer, sum_vector);
+                pointer1 += 4;
+                pointer2 += 4;
+                result_pointer += 4;
+
+                mat1_vector = _mm256_loadu_pd(pointer1);
+                mat2_vector = _mm256_loadu_pd(pointer2);
+                sum_vector = _mm256_add_pd(mat1_vector, mat2_vector);
+                _mm256_storeu_pd(result_pointer, sum_vector);
+                pointer1 += 4;
+                pointer2 += 4;
+                result_pointer += 4;
+
+                mat1_vector = _mm256_loadu_pd(pointer1);
+                mat2_vector = _mm256_loadu_pd(pointer2);
+                sum_vector = _mm256_add_pd(mat1_vector, mat2_vector);
+                _mm256_storeu_pd(result_pointer, sum_vector);
+                pointer1 += 4;
+                pointer2 += 4;
+                result_pointer += 4;
+            }
+
+            for(int j = mat2->cols / 16 * 16; j < mat2->cols; j++) {
+                result->data[i][j] = mat1->data[i][j] + mat2->data[i][j];
+            }
+        }
+        
+        
         return 0;
     }
     return -1;
@@ -241,9 +347,57 @@ int sub_matrix(matrix *result, matrix *mat1, matrix *mat2) {
     /* TODO: YOUR CODE HERE */
     if ((result->rows == mat1->rows && mat1->rows == mat2->rows) && 
         (result->cols == mat1->cols && mat1->cols == mat2->cols)) {
+        /*
         for (int i = 0; i < mat1->rows; i++) {
             for (int j = 0; j < mat1->cols; j++) {
                 set(result, i, j, get(mat1, i, j) - get(mat2, i, j));
+            }
+        }
+        */
+       __m256d mat1_vector;
+        __m256d mat2_vector;
+        __m256d sum_vector;
+
+        for (int i = 0; i < mat1->rows; i++) {
+            double *pointer1 = mat1->data[i];
+            double *pointer2 = mat2->data[i];
+            double *result_pointer = result->data[i];
+            for (int j = 0; j < mat2->cols / 16 * 16; j += 16) {   
+                mat1_vector = _mm256_loadu_pd(pointer1);
+                mat2_vector = _mm256_loadu_pd(pointer2);
+                sum_vector = _mm256_sub_pd(mat1_vector, mat2_vector);
+                _mm256_storeu_pd(result_pointer, sum_vector);
+                pointer1 += 4;
+                pointer2 += 4;
+                result_pointer += 4;
+
+                mat1_vector = _mm256_loadu_pd(pointer1);
+                mat2_vector = _mm256_loadu_pd(pointer2);
+                sum_vector = _mm256_sub_pd(mat1_vector, mat2_vector);
+                _mm256_storeu_pd(result_pointer, sum_vector);
+                pointer1 += 4;
+                pointer2 += 4;
+                result_pointer += 4;
+
+                mat1_vector = _mm256_loadu_pd(pointer1);
+                mat2_vector = _mm256_loadu_pd(pointer2);
+                sum_vector = _mm256_sub_pd(mat1_vector, mat2_vector);
+                _mm256_storeu_pd(result_pointer, sum_vector);
+                pointer1 += 4;
+                pointer2 += 4;
+                result_pointer += 4;
+
+                mat1_vector = _mm256_loadu_pd(pointer1);
+                mat2_vector = _mm256_loadu_pd(pointer2);
+                sum_vector = _mm256_sub_pd(mat1_vector, mat2_vector);
+                _mm256_storeu_pd(result_pointer, sum_vector);
+                pointer1 += 4;
+                pointer2 += 4;
+                result_pointer += 4;
+            }
+
+            for(int j = mat2->cols / 16 * 16; j < mat2->cols; j++) {
+                result->data[i][j] = mat1->data[i][j] - mat2->data[i][j];
             }
         }
         return 0;

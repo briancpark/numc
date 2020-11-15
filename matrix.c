@@ -59,6 +59,7 @@ void rand_matrix(matrix *result, unsigned int seed, double low, double high) {
  */
 int allocate_matrix(matrix **mat, int rows, int cols) {
     /* TODO: YOUR CODE HERE */
+    //How to allocate continguous memory was referenced here: https://www.dimlucas.com/index.php/2017/02/18/the-proper-way-to-dynamically-create-a-two-dimensional-array-in-c/
     if (rows < 1 || cols < 1) {
         PyErr_SetString(PyExc_TypeError, "Nonpositive dimensions!");
         return -1;
@@ -82,8 +83,27 @@ int allocate_matrix(matrix **mat, int rows, int cols) {
 
     (*mat)->ref_cnt = 1;
     (*mat)->parent = NULL;
-    (*mat)->data = (double**) malloc(sizeof(double*) * rows);
 
+    double *arr = calloc(rows * cols, sizeof(double));
+    if (arr == NULL) {
+        free((*mat));
+        PyErr_SetString(PyExc_RuntimeError, "Memory allocation failed!");
+        return -1;
+    }
+
+    (*mat)->data = malloc(rows * sizeof(double*));
+    if ((*mat)->data == NULL) {
+        free(arr);
+        free((*mat));
+        PyErr_SetString(PyExc_RuntimeError, "Memory allocation failed!");
+        return -1;
+    }
+
+    for (int i = 0; i < rows; i++) {
+        (*mat)->data[i] = &(arr[i * cols]);
+    }
+
+    /*
     if ((*mat)->data == NULL) {
         free((*mat));
         PyErr_SetString(PyExc_RuntimeError, "Memory allocation failed!");
@@ -102,6 +122,7 @@ int allocate_matrix(matrix **mat, int rows, int cols) {
             return -1;
         }
     }
+    */
 
     return 0;
 }
@@ -291,6 +312,14 @@ int add_matrix(matrix *result, matrix *mat1, matrix *mat2) {
         // SIMD FULL Acceleration
         // Still bottlenecked by outer for loop... 
         // Will try to see if we can accelerate it through MIMD
+        if (mat1->rows < 64 || mat1->cols < 64) {
+            for (int i = 0; i <  mat2->rows; i++) {
+                for(int j = 0; j < mat2->cols; j++) {
+                    result->data[i][j] = mat1->data[i][j] + mat2->data[i][j];
+                }
+            }
+            return 0;
+        }
         omp_set_num_threads(8);
         __m256d mat1_vector;
         __m256d mat2_vector;
@@ -300,6 +329,7 @@ int add_matrix(matrix *result, matrix *mat1, matrix *mat2) {
             double *pointer1 = mat1->data[i];
             double *pointer2 = mat2->data[i];
             double *result_pointer = result->data[i];
+            
             for (int j = 0; j < mat2->cols / 16 * 16; j += 16) {   
                 mat1_vector = _mm256_loadu_pd(pointer1);
                 mat2_vector = _mm256_loadu_pd(pointer2);

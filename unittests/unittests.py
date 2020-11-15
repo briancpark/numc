@@ -40,15 +40,19 @@ class TestAdd(TestCase):
 
     def test_fractional_scaling_add(self):
         print()
+        speeds = []
         for n in range(1, scale):
             dp_mat1, nc_mat1 = rand_dp_nc_matrix(10 ** n, 10 ** n, seed=0)
             dp_mat2, nc_mat2 = rand_dp_nc_matrix(10 ** n, 10 ** n, seed=1)
             is_correct, speed_up = compute([dp_mat1, dp_mat2], [nc_mat1, nc_mat2], "add")
             self.assertTrue(is_correct)
             print_speedup(speed_up)
+        speeds.append(speed_up)
+        print("AVERAGE SPEEDUP IS: ", sum(speeds) / len(speeds))
 
     def test_fuzz_add(self):
         print()
+        speeds = []
         for n in range(fuzz_rep): 
             row = np.random.randint(1, fuzz) 
             col = np.random.randint(1, fuzz)
@@ -57,6 +61,8 @@ class TestAdd(TestCase):
             is_correct, speed_up = compute([dp_mat1, dp_mat2], [nc_mat1, nc_mat2], "add")
             self.assertTrue(is_correct)
             print_speedup(speed_up)
+        speeds.append(speed_up)
+        print("AVERAGE SPEEDUP IS: ", sum(speeds) / len(speeds))
 
     def test_incorrect_dimension_add(self):
         dp_mat1, nc_mat1 = rand_dp_nc_matrix(2, 4, seed=0)
@@ -350,6 +356,13 @@ class TestGet(TestCase):
             a[0:4:2]
         with self.assertRaises(ValueError):
             a[0:0]
+
+    def test_basic_get(self):
+        dp_mat, nc_mat = rand_dp_nc_matrix(100, 100, seed=0)
+        for _ in range(1000):
+            rand_row = np.random.randint(dp_mat.shape[0])
+            rand_col = np.random.randint(dp_mat.shape[1])
+            self.assertEqual(nc_mat.get(rand_row, rand_col), dp_mat.get(rand_row, rand_col))
         
 class TestSet(TestCase):
     def test_set(self):
@@ -428,6 +441,15 @@ class TestSet(TestCase):
         self.assertEqual(b.shape, e.shape)
         self.assertEqual(a, d)
         self.assertEqual(a.shape, d.shape)
+
+    def test_basic_set(self):
+        dp_mat, nc_mat = rand_dp_nc_matrix(100, 100, seed=0)
+        for i in range(1000):
+            rand_row = np.random.randint(dp_mat.shape[0])
+            rand_col = np.random.randint(dp_mat.shape[1])
+            self.assertEqual(nc_mat.set(rand_row, rand_col, i), dp_mat.set(rand_row, rand_col, i))
+
+        self.assertEqual(dp_mat, nc_mat)
 
 class TestShape(TestCase):
     def test_shape(self):

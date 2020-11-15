@@ -92,7 +92,6 @@ int allocate_matrix(matrix **mat, int rows, int cols) {
 
     for (int i = 0; i < rows; i++) {
         (*mat)->data[i] = (double *) calloc(cols, sizeof(double));
-        
         if ((*mat)->data[i] == NULL) {
             for (int j = 0; j < i; j++) {
                 free((*mat)->data[j]);
@@ -117,14 +116,6 @@ int allocate_matrix(matrix **mat, int rows, int cols) {
 int allocate_matrix_ref(matrix **mat, matrix *from, int row_offset, int col_offset,
                         int rows, int cols) {
     /* TODO: YOUR CODE HERE */
-
-    /* TODO: May not even need this, but check what IndexError really correlates to
-    if (row_offset > rows || col_offset > cols) {
-        PyErr_SetString(PyExc_IndexError, "Index out of range");
-        return -1;
-    }
-    */
-
     if (rows < 0 || cols < 0) {
         PyErr_SetString(PyExc_TypeError, "Negative index");
         return -1;
@@ -151,9 +142,23 @@ int allocate_matrix_ref(matrix **mat, matrix *from, int row_offset, int col_offs
     (*mat)->parent = from;
 
     (*mat)->data = (double**) malloc(sizeof(double*) * rows);
-
+    if ((*mat)->data == NULL) {
+        free((*mat));
+        PyErr_SetString(PyExc_RuntimeError, "Memory allocation failed!");
+        return -1;
+    }
     for (int i = 0; i < rows; i++) {
         (*mat)->data[i] = from->data[i + row_offset] + col_offset;
+
+        if ((*mat)->data[i] == NULL) {
+            for (int j = 0; j < i; j++) {
+                free((*mat)->data[j]);
+            }
+            free((*mat)->data);
+            free((*mat));
+            PyErr_SetString(PyExc_RuntimeError, "Memory allocation failed!");
+            return -1;
+        }
     }
 
     return 0;
@@ -232,7 +237,7 @@ int add_matrix(matrix *result, matrix *mat1, matrix *mat2) {
             }
         }
         */
-        
+         
         //Unrolled naive
         /*
         for (int i = 0; i < mat1->rows; i++) {
@@ -286,10 +291,11 @@ int add_matrix(matrix *result, matrix *mat1, matrix *mat2) {
         // SIMD FULL Acceleration
         // Still bottlenecked by outer for loop... 
         // Will try to see if we can accelerate it through MIMD
+        omp_set_num_threads(8);
         __m256d mat1_vector;
         __m256d mat2_vector;
         __m256d sum_vector;
-
+        #pragma omp parallel for
         for (int i = 0; i < mat1->rows; i++) {
             double *pointer1 = mat1->data[i];
             double *pointer2 = mat2->data[i];
@@ -354,7 +360,7 @@ int sub_matrix(matrix *result, matrix *mat1, matrix *mat2) {
             }
         }
         */
-       __m256d mat1_vector;
+        __m256d mat1_vector;
         __m256d mat2_vector;
         __m256d sum_vector;
 
@@ -420,15 +426,20 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
             return 1;
         }
 
+        omp_set_num_threads(8);
         for (int j = 0; j < mat2->cols; j++) {
             for (int k = 0; k < mat2->rows; k++) {
+                #pragma omp parallel for
                 for (int i = 0; i < mat1->rows; i++) {
                     *(data + (i * mat2->cols) + j) += get(mat1, i, k) * get(mat2, k, j);
                 }
             }
         }
 
+        
+        #pragma omp parallel for
         for (int i = 0; i < mat1->rows; i++) {
+            #pragma omp parallel for
             for (int j = 0; j < mat2->cols; j++) {
                 set(result, i, j, *(data + (i * mat2->cols) + j));
             }
@@ -501,7 +512,10 @@ int pow_matrix(matrix *result, matrix *mat, int pow) {
  */
 int neg_matrix(matrix *result, matrix *mat) {
     if ((result->rows == mat->rows) && (result->cols == mat->cols)) {
+        omp_set_num_threads(8);
+        #pragma omp parallel for
         for (int i = 0; i < mat->rows; i++) {
+            #pragma omp parallel for
             for (int j = 0; j < mat->cols; j++) {
                 result->data[i][j] = (-1.0) * mat->data[i][j];
             }
@@ -519,7 +533,10 @@ int neg_matrix(matrix *result, matrix *mat) {
 int abs_matrix(matrix *result, matrix *mat) {
     /* TODO: YOUR CODE HERE */
     if ((result->rows == mat->rows) && (result->cols == mat->cols)) {
+        omp_set_num_threads(8);
+        #pragma omp parallel for
         for (int i = 0; i < mat->rows; i++) {
+            #pragma omp parallel for
             for (int j = 0; j < mat->cols; j++) { 
                 result->data[i][j] = fabs(mat->data[i][j]);
             }

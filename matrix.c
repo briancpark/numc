@@ -426,20 +426,15 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
             return 1;
         }
 
-        omp_set_num_threads(8);
         for (int j = 0; j < mat2->cols; j++) {
             for (int k = 0; k < mat2->rows; k++) {
-                #pragma omp parallel for
                 for (int i = 0; i < mat1->rows; i++) {
                     *(data + (i * mat2->cols) + j) += get(mat1, i, k) * get(mat2, k, j);
                 }
             }
         }
 
-        
-        #pragma omp parallel for
         for (int i = 0; i < mat1->rows; i++) {
-            #pragma omp parallel for
             for (int j = 0; j < mat2->cols; j++) {
                 set(result, i, j, *(data + (i * mat2->cols) + j));
             }

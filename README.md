@@ -57,5 +57,20 @@ It will do everything in one line, (load Python environment, clean, compile, and
 
 ## Task 4
 
+### Add
+Began first by trying to improve the performance of add.
+
+### About the Hive CPUs
+Will be useful in determining optimization choices and constraints.
+| | |
+|:---:|:----:|
+| CPU | [Intel(R) Core(TM) i7-4770 CPU @ 3.40GHz](https://ark.intel.com/content/www/us/en/ark/products/75122/intel-core-i7-4770-processor-8m-cache-up-to-3-90-ghz.html) |
+| RAM | 32 GB |
+| Cores | 4 |
+| Threads | 8 |
+| L1d | 32K |
+| L1i | 32K | 
+| L2 | 256K |
+| L3 | 8192K |
 
 TAs/Tutors who helped us: Kunal Dutta, Luke Mujica, Jie Qiu

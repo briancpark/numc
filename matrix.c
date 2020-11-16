@@ -340,8 +340,8 @@ int add_matrix(matrix *result, matrix *mat1, matrix *mat2) {
         __m256d mat2_vector;
         __m256d sum_vector;
 
-        omp_set_num_threads(8);
-        #pragma omp parallel for
+        //omp_set_num_threads(8);
+        //#pragma omp parallel for
         for (int i = 0; i < mat2->cols * mat2->rows / 16 * 16; i += 16) {   
             mat1_vector = _mm256_loadu_pd(pointer1 + i);
             mat2_vector = _mm256_loadu_pd(pointer2 + i);
@@ -364,7 +364,7 @@ int add_matrix(matrix *result, matrix *mat1, matrix *mat2) {
             _mm256_storeu_pd(result_pointer + i + 12, sum_vector);
         }
 
-        #pragma omp parallel for
+        //#pragma omp parallel for
         for(int i = mat2->cols * mat2->rows / 16 * 16; i < mat2->cols * mat2->rows; i++) {
             *(result_pointer + i) = *(pointer1 + i) + *(pointer2 + i);
         }

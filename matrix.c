@@ -309,66 +309,65 @@ int add_matrix(matrix *result, matrix *mat1, matrix *mat2) {
         }
         */
 
-        // SIMD FULL Acceleration
-        // Still bottlenecked by outer for loop... 
-        // Will try to see if we can accelerate it through MIMD
-        if (mat1->rows < 64 || mat1->cols < 64) {
-            for (int i = 0; i <  mat2->rows; i++) {
-                for(int j = 0; j < mat2->cols; j++) {
-                    result->data[i][j] = mat1->data[i][j] + mat2->data[i][j];
-                }
-            }
-            return 0;
-        }
+
+        //Vanilla MIMD with no race condition
+        /*
+        double *pointer1 = mat1->data[0];
+        double *pointer2 = mat2->data[0];
+        double *result_pointer = result->data[0];
+
         omp_set_num_threads(8);
-        __m256d mat1_vector;
-        __m256d mat2_vector;
-        __m256d sum_vector;
         #pragma omp parallel for
-        for (int i = 0; i < mat1->rows; i++) {
-            double *pointer1 = mat1->data[i];
-            double *pointer2 = mat2->data[i];
-            double *result_pointer = result->data[i];
-            
-            for (int j = 0; j < mat2->cols / 16 * 16; j += 16) {   
-                mat1_vector = _mm256_loadu_pd(pointer1);
-                mat2_vector = _mm256_loadu_pd(pointer2);
-                sum_vector = _mm256_add_pd(mat1_vector, mat2_vector);
-                _mm256_storeu_pd(result_pointer, sum_vector);
-                pointer1 += 4;
-                pointer2 += 4;
-                result_pointer += 4;
+        for(int i = 0; i < mat2->cols * mat2->rows; i++) {
+            *(result_pointer + i) = *(pointer1 + i) + *(pointer2 + i);
+        }
+        */
 
-                mat1_vector = _mm256_loadu_pd(pointer1);
-                mat2_vector = _mm256_loadu_pd(pointer2);
-                sum_vector = _mm256_add_pd(mat1_vector, mat2_vector);
-                _mm256_storeu_pd(result_pointer, sum_vector);
-                pointer1 += 4;
-                pointer2 += 4;
-                result_pointer += 4;
 
-                mat1_vector = _mm256_loadu_pd(pointer1);
-                mat2_vector = _mm256_loadu_pd(pointer2);
-                sum_vector = _mm256_add_pd(mat1_vector, mat2_vector);
-                _mm256_storeu_pd(result_pointer, sum_vector);
-                pointer1 += 4;
-                pointer2 += 4;
-                result_pointer += 4;
+        double *pointer1 = mat1->data[0];
+        double *pointer2 = mat2->data[0];
+        double *result_pointer = result->data[0];
 
-                mat1_vector = _mm256_loadu_pd(pointer1);
-                mat2_vector = _mm256_loadu_pd(pointer2);
-                sum_vector = _mm256_add_pd(mat1_vector, mat2_vector);
-                _mm256_storeu_pd(result_pointer, sum_vector);
-                pointer1 += 4;
-                pointer2 += 4;
-                result_pointer += 4;
-            }
-
-            for(int j = mat2->cols / 16 * 16; j < mat2->cols; j++) {
-                result->data[i][j] = mat1->data[i][j] + mat2->data[i][j];
+        // SIMD/MIMD FULL SPEED
+        if (mat1->rows < 64 || mat1->cols < 64) {
+            //#pragma omp parallel for
+            for(int i = 0; i < mat2->cols * mat2->rows; i++) {
+                *(result_pointer + i) = *(pointer1 + i) + *(pointer2 + i);
             }
         }
         
+        __m256d mat1_vector;
+        __m256d mat2_vector;
+        __m256d sum_vector;
+
+        omp_set_num_threads(8);
+        #pragma omp parallel for
+        for (int i = 0; i < mat2->cols * mat2->rows / 16 * 16; i += 16) {   
+            mat1_vector = _mm256_loadu_pd(pointer1 + i);
+            mat2_vector = _mm256_loadu_pd(pointer2 + i);
+            sum_vector = _mm256_add_pd(mat1_vector, mat2_vector);
+            _mm256_storeu_pd(result_pointer + i, sum_vector);
+
+            mat1_vector = _mm256_loadu_pd(pointer1 + i + 4);
+            mat2_vector = _mm256_loadu_pd(pointer2 + i + 4);
+            sum_vector = _mm256_add_pd(mat1_vector, mat2_vector);
+            _mm256_storeu_pd(result_pointer + i + 4, sum_vector);
+
+            mat1_vector = _mm256_loadu_pd(pointer1 + i + 8);
+            mat2_vector = _mm256_loadu_pd(pointer2 + i + 8);
+            sum_vector = _mm256_add_pd(mat1_vector, mat2_vector);
+            _mm256_storeu_pd(result_pointer + i + 8, sum_vector);
+
+            mat1_vector = _mm256_loadu_pd(pointer1 + i + 12);
+            mat2_vector = _mm256_loadu_pd(pointer2 + i + 12);
+            sum_vector = _mm256_add_pd(mat1_vector, mat2_vector);
+            _mm256_storeu_pd(result_pointer + i + 12, sum_vector);
+        }
+
+        #pragma omp parallel for
+        for(int i = mat2->cols * mat2->rows / 16 * 16; i < mat2->cols * mat2->rows; i++) {
+            *(result_pointer + i) = *(pointer1 + i) + *(pointer2 + i);
+        }
         
         return 0;
     }
@@ -456,6 +455,8 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
             return 1;
         }
 
+        /*
+        //Naive cached improved solution
         for (int j = 0; j < mat2->cols; j++) {
             for (int k = 0; k < mat2->rows; k++) {
                 for (int i = 0; i < mat1->rows; i++) {
@@ -469,6 +470,100 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
                 set(result, i, j, *(data + (i * mat2->cols) + j));
             }
         }
+        */
+
+        //Naive cache blocking
+        
+        int blocksize = 32;
+        for (int i_blocked = 0; i_blocked < mat1->rows; i_blocked += blocksize) {
+            for (int j_blocked = 0; j_blocked < mat2->cols; j_blocked += blocksize) {
+                for (int k_blocked = 0; k_blocked < mat2->rows; k_blocked += blocksize) {
+                    for (int i = i_blocked; i < (i_blocked + blocksize) && i < mat1->rows; i += 1) {
+                        for (int j = j_blocked; j < j_blocked + blocksize && j < mat2->cols; j++) {        
+                            for (int k = k_blocked; k < k_blocked + blocksize && k < mat2->rows; k++) {
+                               *(data + (i * mat2->cols) + j) += mat1->data[i][k] * mat2->data[k][j];
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        for (int i = 0; i < mat1->rows; i++) {
+            for (int j = 0; j < mat2->cols; j++) {
+                set(result, i, j, *(data + (i * mat2->cols) + j));
+            }
+        }
+        
+
+        
+        /* TODO:
+        //Naive cache blocking with SIMD
+        int blocksize = 32; //Change if a different CPU
+
+        double *pointer1 = mat1->data[0];
+        double *pointer2 = mat2->data[0];
+        double *result_pointer = data;
+
+        for (int i_blocked = 0; i_blocked < mat1->rows; i_blocked += blocksize) {
+            for (int j_blocked = 0; j_blocked < mat2->cols; j_blocked += blocksize) {
+                for (int k_blocked = 0; k_blocked < mat2->rows; k_blocked += blocksize) {
+
+
+                    for (int i = i_blocked; i < (i_blocked + blocksize) && i < mat1->rows; i += 16) {
+                        for (int j = j_blocked; j < j_blocked + blocksize && j < mat2->cols; j++) {        
+                            
+                            __m256d result_vector[4];
+
+                            for (int x = 0; x < 4; x++) {
+                                result_vector[x] = _mm256_load_pd(result_pointer + i + x * 4 + j * mat1->cols);
+                            }
+
+                            for (int k = k_blocked; k < k_blocked + blocksize && k < mat2->rows; k++) {
+                                __m256d b = _mm256_broadcast_sd(pointer2 + k + j * mat2->cols);
+
+                                for (int x = 0; x < 4; x++) {
+                                    result_vector[x] = _mm256_add_pd(result_vector[x], _mm256_mul_pd(_mm256_load_pd(pointer1 + mat1->cols * k + x * 4 + i), b));
+                                }    
+                                //
+                                *(data + (i * mat2->cols) + j) += mat1->data[i][k] * mat2->data[k][j];
+                            }
+
+                            for (int x = 0; x < 4; x++) {
+                                _mm256_store_pd(result_pointer + i + x * 4 + j * mat2->cols, result_vector[x]);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        for (int i = 0; i < mat1->rows; i++) {
+            for (int j = 0; j < mat2->cols; j++) {
+                set(result, i, j, *(data + (i * mat2->cols) + j));
+            }
+        }
+        */
+        
+
+
+/* Below are some intel intrinsics that might be useful
+ * void _mm256_storeu_pd (double * mem_addr, __m256d a)
+ * __m256d _mm256_set1_pd (double a)
+ * __m256d _mm256_set_pd (double e3, double e2, double e1, double e0)
+ * __m256d _mm256_loadu_pd (double const * mem_addr)
+ * __m256d _mm256_add_pd (__m256d a, __m256d b)
+ * __m256d _mm256_sub_pd (__m256d a, __m256d b)
+ * __m256d _mm256_fmadd_pd (__m256d a, __m256d b, __m256d c)
+ * __m256d _mm256_mul_pd (__m256d a, __m256d b)
+ * __m256d _mm256_cmp_pd (__m256d a, __m256d b, const int imm8)
+ * __m256d _mm256_and_pd (__m256d a, __m256d b)
+ * __m256d _mm256_max_pd (__m256d a, __m256d b)
+*/        
+
+        
+       
+        
 
         return 0;
     }

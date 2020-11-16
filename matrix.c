@@ -250,14 +250,14 @@ int add_matrix(matrix *result, matrix *mat1, matrix *mat2) {
     if ((result->rows == mat1->rows && mat1->rows == mat2->rows) && 
         (result->cols == mat1->cols && mat1->cols == mat2->cols)) {
 
-        /*
+        
         //Naive solution
         for (int i = 0; i < mat1->rows; i++) {
             for (int j = 0; j < mat2->cols; j++) {
                 result->data[i][j] = mat1->data[i][j] + mat2->data[i][j];
             }
         }
-        */
+        return 0;
          
         //Unrolled naive
         /*
@@ -323,7 +323,7 @@ int add_matrix(matrix *result, matrix *mat1, matrix *mat2) {
         }
         */
 
-
+        
         double *pointer1 = mat1->data[0];
         double *pointer2 = mat2->data[0];
         double *result_pointer = result->data[0];

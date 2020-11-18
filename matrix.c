@@ -453,6 +453,7 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
         }
         
         
+        
 
         
         /*
@@ -584,17 +585,34 @@ int pow_matrix(matrix *result, matrix *mat, int pow) {
  */
 int neg_matrix(matrix *result, matrix *mat) {
     if ((result->rows == mat->rows) && (result->cols == mat->cols)) {
-        omp_set_num_threads(8);
-        #pragma omp parallel for
-        for (int i = 0; i < mat->rows; i++) {
-            #pragma omp parallel for
-            for (int j = 0; j < mat->cols; j++) {
-                result->data[i][j] = (-1.0) * mat->data[i][j];
+        if (mat->rows < 150 || mat->cols < 150) {
+            for (int i = 0; i < mat->rows; i++) {
+                for (int j = 0; j < mat->cols; j++) {
+                    result->data[i][j] = (-1.0) * mat->data[i][j];
+                }
             }
+            return 0;
+        }
+
+        #pragma omp parallel for num_threads(8) collapse(2)
+        for (int i = 0; i < mat->rows; i++) {        
+            for (int j = 0; j < mat->cols / 4 * 4; j += 4) { 
+                result->data[i][j] = (-1.0) * mat->data[i][j];
+                result->data[i][j + 1] = (-1.0) * mat->data[i][j + 1];
+                result->data[i][j + 2] = (-1.0) * mat->data[i][j + 2];
+                result->data[i][j + 3] = (-1.0) * mat->data[i][j + 3];
+            }
+            
+        }
+        //Tail Case
+        #pragma omp parallel for num_threads(8) collapse(2)
+        for (int i = 0; i < mat->rows; i++) {  
+            for (int j = mat->cols / 4 * 4; j < mat->cols; j++) { 
+                result->data[i][j] = (-1.0) * mat->data[i][j];
+            }    
         }
         return 0;
     }
-    PyErr_SetString(PyExc_RuntimeError, "Invalid dimensions");
     return 1;
 }
 
@@ -605,16 +623,35 @@ int neg_matrix(matrix *result, matrix *mat) {
 int abs_matrix(matrix *result, matrix *mat) {
     /* TODO: YOUR CODE HERE */
     if ((result->rows == mat->rows) && (result->cols == mat->cols)) {
-        omp_set_num_threads(8);
-        #pragma omp parallel for
-        for (int i = 0; i < mat->rows; i++) {
-            #pragma omp parallel for
-            for (int j = 0; j < mat->cols; j++) { 
-                result->data[i][j] = fabs(mat->data[i][j]);
+
+        if (mat->rows < 150 || mat->cols < 150) {
+            for (int i = 0; i < mat->rows; i++) {
+                for (int j = 0; j < mat->cols; j++) {
+                    result->data[i][j] = fabs(mat->data[i][j]);
+                }
             }
+            return 0;
+        }
+
+        #pragma omp parallel for num_threads(8) collapse(2)
+        for (int i = 0; i < mat->rows; i++) {        
+            for (int j = 0; j < mat->cols / 4 * 4; j += 4) { 
+                result->data[i][j] = fabs(mat->data[i][j]);
+                result->data[i][j + 1] = fabs(mat->data[i][j + 1]);
+                result->data[i][j + 2] = fabs(mat->data[i][j + 2]);
+                result->data[i][j + 3] = fabs(mat->data[i][j + 3]);
+            }
+            
+        }
+        //Tail Case
+        #pragma omp parallel for num_threads(8) collapse(2)
+        for (int i = 0; i < mat->rows; i++) {  
+            for (int j = mat->cols / 4 * 4; j < mat->cols; j++) { 
+                result->data[i][j] = fabs(mat->data[i][j]);
+            }    
         }
         return 0;
     }
-    PyErr_SetString(PyExc_TypeError, "Invalid dimensions");
+
     return -1;
 }

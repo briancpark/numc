@@ -356,8 +356,16 @@ int add_matrix(matrix *result, matrix *mat1, matrix *mat2) {
         return 0;
         */
 
+        if (mat1->rows < 16 || mat1->cols < 16) {
+            for (int i = 0; i < mat1->rows; i++) {
+                for (int j = 0; j < mat1->cols; j++) {
+                    result->data[i][j] = mat1->data[i][j] + mat2->data[i][j];  
+                }
+            }
+            return 0;
+        }
 
-        if (mat1->rows < 64 || mat1->cols < 64) {
+        if (mat1->rows < 256 || mat1->cols < 256) {
             for (int i = 0; i < mat1->rows * mat1->cols / 4 * 4; i += 4) {
                 result->data[i / mat1->cols][i % mat1->cols] = mat1->data[i / mat1->cols][i % mat1->cols] + mat2->data[i / mat2->cols][i % mat2->cols];  
                 result->data[(i + 1) / mat1->cols][(i + 1) % mat1->cols] = mat1->data[(i + 1) / mat1->cols][(i + 1) % mat1->cols] + mat2->data[(i + 1) / mat2->cols][(i + 1) % mat2->cols];  
@@ -399,7 +407,16 @@ int sub_matrix(matrix *result, matrix *mat1, matrix *mat2) {
     if ((result->rows == mat1->rows && mat1->rows == mat2->rows) && 
         (result->cols == mat1->cols && mat1->cols == mat2->cols)) {
         // SIMD/MIMD FULL SPEED
-        if (mat1->rows < 64 || mat1->cols < 64) {
+        if (mat1->rows < 16 || mat1->cols < 16) {
+            for (int i = 0; i < mat1->rows; i++) {
+                for (int j = 0; j < mat1->cols; j++) {
+                    result->data[i][j] = mat1->data[i][j] - mat2->data[i][j];  
+                }
+            }
+            return 0;
+        }
+
+        if (mat1->rows < 256 || mat1->cols < 256) {
             for (int i = 0; i < mat1->rows * mat1->cols / 4 * 4; i += 4) {
                 result->data[i / mat1->cols][i % mat1->cols] = mat1->data[i / mat1->cols][i % mat1->cols] - mat2->data[i / mat2->cols][i % mat2->cols];  
                 result->data[(i + 1) / mat1->cols][(i + 1) % mat1->cols] = mat1->data[(i + 1) / mat1->cols][(i + 1) % mat1->cols] - mat2->data[(i + 1) / mat2->cols][(i + 1) % mat2->cols];  
@@ -443,8 +460,34 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
         
         double *data = (double*) calloc(mat1->rows * mat2->cols, sizeof(double));
         if (data == NULL) {
+            PyErr_SetString(PyExc_RuntimeError, "Memory allocation failed!");
             return 1;
         }
+        /*
+        double *b_t_rows = (double*) calloc(mat1->rows * mat2->cols, sizeof(double));
+        if (b_t_rows== NULL) {
+            PyErr_SetString(PyExc_RuntimeError, "Memory allocation failed!");
+            return -1;
+        }
+
+        double **b_transpose = (double**) malloc(mat2->cols * sizeof(double*));        
+        if (b_transpose == NULL) {
+            PyErr_SetString(PyExc_RuntimeError, "Memory allocation failed!");
+            return -1;
+        }
+
+        for (int i = 0; i < mat2->cols; i++) {
+            b_transpose[i] = &(b_t_rows[i * mat1->rows]);
+        }
+        
+        for (int i = 0; i < mat2->cols; i++) {
+            for (int j = 0; j < mat1->rows; j++) {
+                b_transpose[i][j] = mat2->data[j][i];
+            }
+        }
+
+        */
+
 
         /*
         //Naive cached improved solution
@@ -466,13 +509,14 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
         //Naive cache blocking
         
         int blocksize = 32;
+        
         for (int i_blocked = 0; i_blocked < mat1->rows; i_blocked += blocksize) {
             for (int j_blocked = 0; j_blocked < mat2->cols; j_blocked += blocksize) {
                 for (int k_blocked = 0; k_blocked < mat2->rows; k_blocked += blocksize) {
                     for (int i = i_blocked; i < (i_blocked + blocksize) && i < mat1->rows; i += 1) {
                         for (int j = j_blocked; j < j_blocked + blocksize && j < mat2->cols; j++) {        
                             for (int k = k_blocked; k < k_blocked + blocksize && k < mat2->rows; k++) {
-                               *(data + (i * mat2->cols) + j) += mat1->data[i][k] * mat2->data[k][j];
+                                *(data + (i * mat2->cols) + j) += mat1->data[i][k] * mat2->data[k][j];
                             }
                         }
                     }
@@ -486,106 +530,45 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
             }
         }
         return 0;
-        
 
         /*
-        if (mat1->cols < 0) {
-            int blocksize = 32;
-            for (int i_blocked = 0; i_blocked < mat1->rows; i_blocked += blocksize) {
-                for (int j_blocked = 0; j_blocked < mat2->cols; j_blocked += blocksize) {
-                    for (int k_blocked = 0; k_blocked < mat2->rows; k_blocked += blocksize) {
-                        for (int i = i_blocked; i < (i_blocked + blocksize) && i < mat1->rows; i += 1) {
-                            for (int j = j_blocked; j < j_blocked + blocksize && j < mat2->cols; j++) {        
-                                for (int k = k_blocked; k < k_blocked + blocksize && k < mat2->rows; k++) {
-                                    *(data + (i * mat2->cols) + j) += mat1->data[i][k] * mat2->data[k][j];
-                                }
-                            }
-                        }
-                    }
+        for (int i = 0; i < mat1->rows; i++) {
+            for (int j = 0; j < mat2->cols / 16 * 16; j += 16) {
+                
+                __m256d c[4];
+                for (int x = 0; x < 4; x++) {
+                    c[x] = _mm256_loadu_pd(data+i+x*4+j*mat2->cols);
                 }
-            }
-            
-            for (int i = 0; i < mat1->rows; i++) {
-                for (int j = 0; j < mat2->cols; j++) {
-                    set(result, i, j, *(data + (i * mat2->cols) + j));
-                }
-            }
-            return 0;
-        }
-        
-        
-        
-        //Naive cache blocking with SIMD
-        //int blocksize = 32; //Change if a different CPU
-        
-        double *result_pointer = data;
-        int blocksize = 32;
 
-        for (int i_blocked = 0; i_blocked < mat1->rows; i_blocked += blocksize) {
-            for (int j_blocked = 0; j_blocked < mat2->cols; j_blocked += blocksize) {
-                for (int k_blocked = 0; k_blocked < mat2->rows; k_blocked += blocksize) {
-                    for (int i = i_blocked; i < i_blocked + blocksize; i += 16) {
-                        for (int j = j_blocked; j < j_blocked + blocksize; j++) {
-                            __m256d c[4];
-                            for (int x = 0; x < 4; x++) {
-                                c[x] = _mm256_loadu_pd(result_pointer+i+x*4+j*mat2->cols);
-                            }
-                            
-                            for (int k = k_blocked; k < k_blocked + blocksize; k++) {
-                                __m256d b = _mm256_broadcast_sd(mat2->data[0]+k+j*mat2->cols);
-                                for (int x = 0; x < 4; x++) {
-                                    c[x] = _mm256_fmadd_pd(_mm256_loadu_pd(mat1->data[0]+mat1->rows*k+x*4+i), b, c[x]);
-                                }
-                            }        
-
-                            for (int x = 0; x < 4; x++) {
-                                _mm256_storeu_pd(result_pointer + (j * mat2->cols) + i, c[x]);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        
-        
-        for (int i = mat1->rows / 4 * 4; i < mat1->rows; i++) {
-            for (int j = 0; j < mat2->cols; j++) {
                 for (int k = 0; k < mat2->rows; k++) {
-                    *(data + (i * mat2->cols) + j) += mat1->data[i][k] * mat2->data[k][j];
+                    //(data + (i * mat2->cols) + j) += mat1->data[i][k] * mat2->data[k][j];
+                    
+                    
+                    
+                    __m256d b = _mm256_broadcast_sd(mat2->data[0]+k+j*mat2->cols);
+                    for (int x = 0; x < 4; x++) {
+                        c[x] = _mm256_fmadd_pd(_mm256_loadu_pd(mat1->data[0]+mat1->rows*k+x*4+i), b, c[x]);
+                    }
+                    
+      
+                }
+
+                for (int x = 0; x < 4; x++) {
+                    _mm256_storeu_pd(data + (j * mat2->cols) + i, c[x]);
                 }
             }
         }
-        
 
         for (int i = 0; i < mat1->rows; i++) {
             for (int j = 0; j < mat2->cols; j++) {
                 set(result, i, j, *(data + (i * mat2->cols) + j));
             }
         }
-        
-        
         */
-        
-
-
-/* Below are some intel intrinsics that might be useful
- * void _mm256_storeu_pd (double * mem_addr, __m256d a)
- * __m256d _mm256_set1_pd (double a)
- * __m256d _mm256_set_pd (double e3, double e2, double e1, double e0)
- * __m256d _mm256_loadu_pd (double const * mem_addr)
- * __m256d _mm256_add_pd (__m256d a, __m256d b)
- * __m256d _mm256_sub_pd (__m256d a, __m256d b)
- * __m256d _mm256_fmadd_pd (__m256d a, __m256d b, __m256d c)
- * __m256d _mm256_mul_pd (__m256d a, __m256d b)
- * __m256d _mm256_cmp_pd (__m256d a, __m256d b, const int imm8)
- * __m256d _mm256_and_pd (__m256d a, __m256d b)
- * __m256d _mm256_max_pd (__m256d a, __m256d b)
-*/        
-
-        
-        
+    
 
         return 0;
+    
     }
     return -1;
 }
@@ -652,7 +635,16 @@ int pow_matrix(matrix *result, matrix *mat, int pow) {
  */
 int neg_matrix(matrix *result, matrix *mat) {
     if ((result->rows == mat->rows) && (result->cols == mat->cols)) {
-        if (mat->rows < 64 || mat->cols < 64) {
+        if (mat->rows < 16 || mat->cols < 16) {
+            for (int i = 0; i < mat->rows; i++) {
+                for (int j = 0; j < mat->cols; j++) {
+                    result->data[i][j] = (-1.0) * mat->data[i][j];
+                }
+            }
+            return 0;
+        }
+
+        if (mat->rows < 256 || mat->cols < 256) {
             for (int i = 0; i < mat->rows * mat->cols / 4 * 4; i += 4) {
                 result->data[i / mat->cols][i % mat->cols] = (-1.0) * mat->data[i / mat->cols][i % mat->cols];  
                 result->data[(i + 1) / mat->cols][(i + 1) % mat->cols] = (-1.0) * mat->data[(i + 1) / mat->cols][(i + 1) % mat->cols];  
@@ -693,7 +685,16 @@ int abs_matrix(matrix *result, matrix *mat) {
     /* TODO: YOUR CODE HERE */
     if ((result->rows == mat->rows) && (result->cols == mat->cols)) {
 
-        if (mat->rows < 64 || mat->cols < 64) {
+        if (mat->rows < 16 || mat->cols < 16) {
+            for (int i = 0; i < mat->rows; i++) {
+                for (int j = 0; j < mat->cols; j++) {
+                    result->data[i][j] = fabs(mat->data[i][j]);
+                }
+            }
+            return 0;
+        }
+
+        if (mat->rows < 256 || mat->cols < 256) {
             for (int i = 0; i < mat->rows * mat->cols / 4 * 4; i += 4) {
                 result->data[i / mat->cols][i % mat->cols] = fabs(mat->data[i / mat->cols][i % mat->cols]);  
                 result->data[(i + 1) / mat->cols][(i + 1) % mat->cols] = fabs(mat->data[(i + 1) / mat->cols][(i + 1) % mat->cols]);  

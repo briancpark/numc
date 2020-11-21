@@ -357,23 +357,23 @@ int add_matrix(matrix *result, matrix *mat1, matrix *mat2) {
         */
 
 
-
-        
-        if (mat1->rows < 150 || mat1->cols < 150) {
-            for (int i = 0; i < mat1->rows; i++) {
-                for (int j = 0; j < mat2->cols; j++) {
-                    result->data[i][j] = mat1->data[i][j] + mat2->data[i][j];
-                }
+        if (mat1->rows < 64 || mat1->cols < 64) {
+            for (int i = 0; i < mat1->rows * mat1->cols / 4 * 4; i += 4) {
+                result->data[i / mat1->cols][i % mat1->cols] = mat1->data[i / mat1->cols][i % mat1->cols] + mat2->data[i / mat2->cols][i % mat2->cols];  
+                result->data[(i + 1) / mat1->cols][(i + 1) % mat1->cols] = mat1->data[(i + 1) / mat1->cols][(i + 1) % mat1->cols] + mat2->data[(i + 1) / mat2->cols][(i + 1) % mat2->cols];  
+                result->data[(i + 2) / mat1->cols][(i + 2) % mat1->cols] = mat1->data[(i + 2) / mat1->cols][(i + 2) % mat1->cols] + mat2->data[(i + 2) / mat2->cols][(i + 2) % mat2->cols];  
+                result->data[(i + 3) / mat1->cols][(i + 3) % mat1->cols] = mat1->data[(i + 3) / mat1->cols][(i + 3) % mat1->cols] + mat2->data[(i + 3) / mat2->cols][(i + 3) % mat2->cols];  
+            }
+            
+            for (int i = mat1->rows * mat1->cols / 4 * 4; i < mat1->rows * mat1->cols; i++) {
+                result->data[i / mat1->cols][i % mat1->cols] = mat1->data[i / mat1->cols][i % mat1->cols] + mat2->data[i / mat2->cols][i % mat2->cols];  
             }
             return 0;
         }
-        omp_set_num_threads(8);
+
+        omp_set_num_threads(4);
         #pragma omp parallel for
         for (int i = 0; i < mat2->rows * mat2->cols / 16 * 16; i += 16) {        
-            //*(result->data[i / mat2->cols] + (i % mat2->cols)) = *(mat1->data[i / mat2->cols] + (i % mat2->cols)) + *(mat2->data[i / mat2->cols] + (i % mat2->cols));
-            //*(result->data[(i + 1) / mat2->cols] + ((i + 1) % mat2->cols)) = *(mat1->data[(i + 1) / mat2->cols] + ((i + 1) % mat2->cols)) + *(mat2->data[(i + 1) / mat2->cols] + ((i + 1) % mat2->cols));
-            //*(result->data[(i + 2) / mat2->cols] + ((i + 2) % mat2->cols)) = *(mat1->data[(i + 2) / mat2->cols] + ((i + 2) % mat2->cols)) + *(mat2->data[(i + 2) / mat2->cols] + ((i + 2) % mat2->cols));
-            //*(result->data[(i + 3) / mat2->cols] + ((i + 3) % mat2->cols)) = *(mat1->data[(i + 3) / mat2->cols] + ((i + 3) % mat2->cols)) + *(mat2->data[(i + 3) / mat2->cols] + ((i + 3) % mat2->cols));
             _mm256_storeu_pd(result->data[i / mat2->cols] + (i % mat2->cols), _mm256_add_pd(_mm256_loadu_pd(mat1->data[i / mat2->cols] + (i % mat2->cols)), _mm256_loadu_pd(mat2->data[i / mat2->cols] + (i % mat2->cols))));
             _mm256_storeu_pd(result->data[(i + 4) / mat2->cols] + ((i + 4) % mat2->cols), _mm256_add_pd(_mm256_loadu_pd(mat1->data[(i + 4) / mat2->cols] + ((i + 4) % mat2->cols)), _mm256_loadu_pd(mat2->data[(i + 4) / mat2->cols] + ((i + 4) % mat2->cols))));
             _mm256_storeu_pd(result->data[(i + 8) / mat2->cols] + ((i + 8) % mat2->cols), _mm256_add_pd(_mm256_loadu_pd(mat1->data[(i + 8) / mat2->cols] + ((i + 8) % mat2->cols)), _mm256_loadu_pd(mat2->data[(i + 8) / mat2->cols] + ((i + 8) % mat2->cols))));
@@ -383,7 +383,7 @@ int add_matrix(matrix *result, matrix *mat1, matrix *mat2) {
         //Tail Case
         #pragma omp parallel for
         for (int i = mat2->rows * mat2->cols / 16 * 16; i < mat2->rows * mat2->cols; i++) {  
-            *(result->data[i / mat2->cols] + (i % mat2->cols)) = *(mat1->data[i / mat2->cols] + (i % mat2->cols)) + *(mat2->data[i / mat2->cols] + (i % mat2->cols));
+            result->data[i / mat1->cols][i % mat1->cols] = mat1->data[i / mat1->cols][i % mat1->cols] + mat2->data[i / mat2->cols][i % mat2->cols];  
         }
         return 0;
     }
@@ -399,32 +399,33 @@ int sub_matrix(matrix *result, matrix *mat1, matrix *mat2) {
     if ((result->rows == mat1->rows && mat1->rows == mat2->rows) && 
         (result->cols == mat1->cols && mat1->cols == mat2->cols)) {
         // SIMD/MIMD FULL SPEED
-        if (mat1->rows < 150 || mat1->cols < 150) {
-            for (int i = 0; i < mat1->rows; i++) {
-                for (int j = 0; j < mat2->cols; j++) {
-                    result->data[i][j] = mat1->data[i][j] - mat2->data[i][j];
-                }
+        if (mat1->rows < 64 || mat1->cols < 64) {
+            for (int i = 0; i < mat1->rows * mat1->cols / 4 * 4; i += 4) {
+                result->data[i / mat1->cols][i % mat1->cols] = mat1->data[i / mat1->cols][i % mat1->cols] - mat2->data[i / mat2->cols][i % mat2->cols];  
+                result->data[(i + 1) / mat1->cols][(i + 1) % mat1->cols] = mat1->data[(i + 1) / mat1->cols][(i + 1) % mat1->cols] - mat2->data[(i + 1) / mat2->cols][(i + 1) % mat2->cols];  
+                result->data[(i + 2) / mat1->cols][(i + 2) % mat1->cols] = mat1->data[(i + 2) / mat1->cols][(i + 2) % mat1->cols] - mat2->data[(i + 2) / mat2->cols][(i + 2) % mat2->cols];  
+                result->data[(i + 3) / mat1->cols][(i + 3) % mat1->cols] = mat1->data[(i + 3) / mat1->cols][(i + 3) % mat1->cols] - mat2->data[(i + 3) / mat2->cols][(i + 3) % mat2->cols];  
+            }
+            
+            for (int i = mat1->rows * mat1->cols / 4 * 4; i < mat1->rows * mat1->cols; i++) {
+                result->data[i / mat1->cols][i % mat1->cols] = mat1->data[i / mat1->cols][i % mat1->cols] - mat2->data[i / mat2->cols][i % mat2->cols];  
             }
             return 0;
         }
-            
-        #pragma omp parallel for num_threads(8) collapse(2)
-        for (int i = 0; i < mat2->rows; i++) {        
-            for (int j = 0; j < mat2->cols / 16 * 16; j += 16) { 
-                _mm256_storeu_pd(result->data[i] + j, _mm256_sub_pd(_mm256_loadu_pd(mat1->data[i] + j), _mm256_loadu_pd(mat2->data[i] + j)));
-                _mm256_storeu_pd(result->data[i] + j + 4, _mm256_sub_pd(_mm256_loadu_pd(mat1->data[i] + j + 4), _mm256_loadu_pd(mat2->data[i] + j + 4)));
-                _mm256_storeu_pd(result->data[i] + j + 8, _mm256_sub_pd(_mm256_loadu_pd(mat1->data[i] + j + 8), _mm256_loadu_pd(mat2->data[i] + j + 8)));
-                _mm256_storeu_pd(result->data[i] + j + 12, _mm256_sub_pd(_mm256_loadu_pd(mat1->data[i] + j + 12), _mm256_loadu_pd(mat2->data[i] + j + 12)));
-            }
-            
+
+        omp_set_num_threads(4);
+        #pragma omp parallel for
+        for (int i = 0; i < mat2->rows * mat2->cols / 16 * 16; i += 16) {        
+            _mm256_storeu_pd(result->data[i / mat2->cols] + (i % mat2->cols), _mm256_sub_pd(_mm256_loadu_pd(mat1->data[i / mat2->cols] + (i % mat2->cols)), _mm256_loadu_pd(mat2->data[i / mat2->cols] + (i % mat2->cols))));
+            _mm256_storeu_pd(result->data[(i + 4) / mat2->cols] + ((i + 4) % mat2->cols), _mm256_sub_pd(_mm256_loadu_pd(mat1->data[(i + 4) / mat2->cols] + ((i + 4) % mat2->cols)), _mm256_loadu_pd(mat2->data[(i + 4) / mat2->cols] + ((i + 4) % mat2->cols))));
+            _mm256_storeu_pd(result->data[(i + 8) / mat2->cols] + ((i + 8) % mat2->cols), _mm256_sub_pd(_mm256_loadu_pd(mat1->data[(i + 8) / mat2->cols] + ((i + 8) % mat2->cols)), _mm256_loadu_pd(mat2->data[(i + 8) / mat2->cols] + ((i + 8) % mat2->cols))));
+            _mm256_storeu_pd(result->data[(i + 12) / mat2->cols] + ((i + 12) % mat2->cols), _mm256_sub_pd(_mm256_loadu_pd(mat1->data[(i + 12) / mat2->cols] + ((i + 12) % mat2->cols)), _mm256_loadu_pd(mat2->data[(i + 12) / mat2->cols] + ((i + 12) % mat2->cols))));        
         }
 
         //Tail Case
-        #pragma omp parallel for num_threads(8) collapse(2)
-        for (int i = 0; i < mat2->rows; i++) {  
-            for(int j = mat2->cols / 16 * 16; j < mat2->cols; j++) {
-                *(result->data[i] + j) = *(mat1->data[i] + j) - *(mat2->data[i] + j);
-            }     
+        #pragma omp parallel for
+        for (int i = mat2->rows * mat2->cols / 16 * 16; i < mat2->rows * mat2->cols; i++) {  
+            result->data[i / mat1->cols][i % mat1->cols] = mat1->data[i / mat1->cols][i % mat1->cols] - mat2->data[i / mat2->cols][i % mat2->cols];  
         }
         return 0;
     }
@@ -484,11 +485,10 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
                 set(result, i, j, *(data + (i * mat2->cols) + j));
             }
         }
-        
+        return 0;
         
 
         /*
-        
         if (mat1->cols < 0) {
             int blocksize = 32;
             for (int i_blocked = 0; i_blocked < mat1->rows; i_blocked += blocksize) {
@@ -562,9 +562,9 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
                 set(result, i, j, *(data + (i * mat2->cols) + j));
             }
         }
+        
+        
         */
-        
-        
         
 
 
@@ -652,30 +652,33 @@ int pow_matrix(matrix *result, matrix *mat, int pow) {
  */
 int neg_matrix(matrix *result, matrix *mat) {
     if ((result->rows == mat->rows) && (result->cols == mat->cols)) {
-        if (mat->rows < 150 || mat->cols < 150) {
-            for (int i = 0; i < mat->rows; i++) {
-                for (int j = 0; j < mat->cols; j++) {
-                    result->data[i][j] = (-1.0) * mat->data[i][j];
-                }
+        if (mat->rows < 64 || mat->cols < 64) {
+            for (int i = 0; i < mat->rows * mat->cols / 4 * 4; i += 4) {
+                result->data[i / mat->cols][i % mat->cols] = (-1.0) * mat->data[i / mat->cols][i % mat->cols];  
+                result->data[(i + 1) / mat->cols][(i + 1) % mat->cols] = (-1.0) * mat->data[(i + 1) / mat->cols][(i + 1) % mat->cols];  
+                result->data[(i + 2) / mat->cols][(i + 2) % mat->cols] = (-1.0) * mat->data[(i + 2) / mat->cols][(i + 2) % mat->cols];  
+                result->data[(i + 3) / mat->cols][(i + 3) % mat->cols] = (-1.0) * mat->data[(i + 3) / mat->cols][(i + 3) % mat->cols];  
             }
+            
+            for (int i = mat->rows * mat->cols / 4 * 4; i < mat->rows * mat->cols; i++) {
+                result->data[i / mat->cols][i % mat->cols] = (-1.0) * mat->data[i / mat->cols][i % mat->cols];  
+            }
+
             return 0;
         }
-
-        #pragma omp parallel for num_threads(8) collapse(2)
-        for (int i = 0; i < mat->rows; i++) {        
-            for (int j = 0; j < mat->cols / 16 * 16; j += 16) { 
-                _mm256_storeu_pd(result->data[i] + j, _mm256_sub_pd(_mm256_set1_pd(0.0), _mm256_loadu_pd(mat->data[i] + j)));
-                _mm256_storeu_pd(result->data[i] + j + 4, _mm256_sub_pd(_mm256_set1_pd(0.0), _mm256_loadu_pd(mat->data[i] + j + 4)));
-                _mm256_storeu_pd(result->data[i] + j + 8, _mm256_sub_pd(_mm256_set1_pd(0.0), _mm256_loadu_pd(mat->data[i] + j + 8)));
-                _mm256_storeu_pd(result->data[i] + j + 12, _mm256_sub_pd(_mm256_set1_pd(0.0), _mm256_loadu_pd(mat->data[i] + j + 12)));
-            }   
-        }
+        omp_set_num_threads(4);
+        #pragma omp parallel for
+        for (int i = 0; i < mat->rows * mat->cols / 16 * 16; i += 16) { 
+            _mm256_storeu_pd(result->data[i / mat->cols] + (i % mat->cols), _mm256_sub_pd(_mm256_set1_pd(0.0), _mm256_loadu_pd(mat->data[i / mat->cols] + (i % mat->cols))));
+            _mm256_storeu_pd(result->data[(i + 4) / mat->cols] + ((i + 4) % mat->cols), _mm256_sub_pd(_mm256_set1_pd(0.0), _mm256_loadu_pd(mat->data[(i + 4) / mat->cols] + ((i + 4) % mat->cols))));
+            _mm256_storeu_pd(result->data[(i + 8) / mat->cols] + ((i + 8) % mat->cols), _mm256_sub_pd(_mm256_set1_pd(0.0), _mm256_loadu_pd(mat->data[(i + 8) / mat->cols] + ((i + 8) % mat->cols))));
+            _mm256_storeu_pd(result->data[(i + 12) / mat->cols] + ((i + 12) % mat->cols), _mm256_sub_pd(_mm256_set1_pd(0.0), _mm256_loadu_pd(mat->data[(i + 12) / mat->cols] + ((i + 12) % mat->cols))));
+        }   
+    
         //Tail Case
-        #pragma omp parallel for num_threads(8) collapse(2)
-        for (int i = 0; i < mat->rows; i++) {  
-            for (int j = mat->cols / 16 * 16; j < mat->cols; j++) { 
-                result->data[i][j] = (-1.0) * mat->data[i][j];
-            }    
+        #pragma omp parallel for
+        for (int i = mat->rows * mat->cols / 16 * 16; i < mat->rows * mat->cols; i++) {  
+            result->data[i / mat->cols][i % mat->cols] = (-1.0) * mat->data[i / mat->cols][i % mat->cols];  
         }
         return 0;
     }
@@ -690,31 +693,33 @@ int abs_matrix(matrix *result, matrix *mat) {
     /* TODO: YOUR CODE HERE */
     if ((result->rows == mat->rows) && (result->cols == mat->cols)) {
 
-        if (mat->rows < 150 || mat->cols < 150) {
-            for (int i = 0; i < mat->rows; i++) {
-                for (int j = 0; j < mat->cols; j++) {
-                    result->data[i][j] = fabs(mat->data[i][j]);
-                }
+        if (mat->rows < 64 || mat->cols < 64) {
+            for (int i = 0; i < mat->rows * mat->cols / 4 * 4; i += 4) {
+                result->data[i / mat->cols][i % mat->cols] = fabs(mat->data[i / mat->cols][i % mat->cols]);  
+                result->data[(i + 1) / mat->cols][(i + 1) % mat->cols] = fabs(mat->data[(i + 1) / mat->cols][(i + 1) % mat->cols]);  
+                result->data[(i + 2) / mat->cols][(i + 2) % mat->cols] = fabs(mat->data[(i + 2) / mat->cols][(i + 2) % mat->cols]);  
+                result->data[(i + 3) / mat->cols][(i + 3) % mat->cols] = fabs(mat->data[(i + 3) / mat->cols][(i + 3) % mat->cols]);  
+            }
+            
+            for (int i = mat->rows * mat->cols / 4 * 4; i < mat->rows * mat->cols; i++) {
+                result->data[i / mat->cols][i % mat->cols] = fabs(mat->data[i / mat->cols][i % mat->cols]);  
             }
             return 0;
         }
 
-        #pragma omp parallel for num_threads(8) collapse(2)
-        for (int i = 0; i < mat->rows; i++) {        
-            for (int j = 0; j < mat->cols / 4 * 4; j += 4) { 
-                _mm256_storeu_pd(result->data[i] + j, _mm256_max_pd(_mm256_sub_pd(_mm256_set1_pd(0.0), _mm256_loadu_pd(mat->data[i] + j)), _mm256_loadu_pd(mat->data[i] + j)));
-                _mm256_storeu_pd(result->data[i] + j + 4, _mm256_max_pd(_mm256_sub_pd(_mm256_set1_pd(0.0), _mm256_loadu_pd(mat->data[i] + j + 4)), _mm256_loadu_pd(mat->data[i] + j + 4)));
-                _mm256_storeu_pd(result->data[i] + j + 8, _mm256_max_pd(_mm256_sub_pd(_mm256_set1_pd(0.0), _mm256_loadu_pd(mat->data[i] + j + 8)), _mm256_loadu_pd(mat->data[i] + j + 8)));
-                _mm256_storeu_pd(result->data[i] + j + 12, _mm256_max_pd(_mm256_sub_pd(_mm256_set1_pd(0.0), _mm256_loadu_pd(mat->data[i] + j + 12)), _mm256_loadu_pd(mat->data[i] + j + 12)));
-            }
-            
+        omp_set_num_threads(4);
+        #pragma omp parallel for
+        for (int i = 0; i < mat->rows * mat->cols / 16 * 16; i += 16) { 
+            _mm256_storeu_pd(result->data[i / mat->cols] + (i % mat->cols), _mm256_max_pd(_mm256_sub_pd(_mm256_set1_pd(0.0), _mm256_loadu_pd(mat->data[i / mat->cols] + (i % mat->cols))), _mm256_loadu_pd(mat->data[i / mat->cols] + (i % mat->cols))));
+            _mm256_storeu_pd(result->data[(i + 4) / mat->cols] + ((i + 4) % mat->cols), _mm256_max_pd(_mm256_sub_pd(_mm256_set1_pd(0.0), _mm256_loadu_pd(mat->data[(i + 4) / mat->cols] + ((i + 4) % mat->cols))), _mm256_loadu_pd(mat->data[(i + 4) / mat->cols] + ((i + 4) % mat->cols))));
+            _mm256_storeu_pd(result->data[(i + 8) / mat->cols] + ((i + 8) % mat->cols), _mm256_max_pd(_mm256_sub_pd(_mm256_set1_pd(0.0), _mm256_loadu_pd(mat->data[(i + 8) / mat->cols] + ((i + 8) % mat->cols))), _mm256_loadu_pd(mat->data[(i + 8) / mat->cols] + ((i + 8) % mat->cols))));
+            _mm256_storeu_pd(result->data[(i + 12) / mat->cols] + ((i + 12) % mat->cols), _mm256_max_pd(_mm256_sub_pd(_mm256_set1_pd(0.0), _mm256_loadu_pd(mat->data[(i + 12) / mat->cols] + ((i + 12) % mat->cols))), _mm256_loadu_pd(mat->data[(i + 12) / mat->cols] + ((i + 12) % mat->cols))));
         }
+        
         //Tail Case
-        #pragma omp parallel for num_threads(8) collapse(2)
-        for (int i = 0; i < mat->rows; i++) {  
-            for (int j = mat->cols / 4 * 4; j < mat->cols; j++) { 
-                result->data[i][j] = fabs(mat->data[i][j]);
-            }    
+        #pragma omp parallel for
+        for (int i = mat->rows * mat->cols / 16 * 16; i < mat->rows * mat->cols; i++) {  
+            result->data[i / mat->cols][i % mat->cols] = fabs(mat->data[i / mat->cols][i % mat->cols]);
         }
         return 0;
     }

@@ -99,6 +99,8 @@ int allocate_matrix(matrix **mat, int rows, int cols) {
         return -1;
     }
 
+    omp_set_num_threads(4);
+    #pragma omp parallel for
     for (int i = 0; i < rows; i++) {
         (*mat)->data[i] = &(arr[i * cols]);
     }
@@ -234,10 +236,17 @@ void fill_matrix(matrix *mat, double val) {
     /* TODO: YOUR CODE HERE */
     int rows = mat->rows;
     int cols = mat->cols;
+    /*
     for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
             mat->data[i][j] = val;
         }
+    }
+    */
+    omp_set_num_threads(4);
+    #pragma omp parallel for
+    for (int i = 0; i < rows * cols; i++) {
+        *(mat->data[0] + i) = val;
     }
 }
 

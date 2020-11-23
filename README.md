@@ -73,4 +73,4 @@ Will be useful in determining optimization choices and constraints.
 | L2 | 256K |
 | L3 | 8192K |
 
-TAs/Tutors who helped us: Kunal Dutta, Luke Mujica, Jie Qiu
+TAs/Tutors who helped us: Kunal Dutta, Luke Mujica, Jie Qiu, Cynthia Zhong, Kevin Lafeur

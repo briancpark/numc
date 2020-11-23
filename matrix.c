@@ -201,6 +201,7 @@ void deallocate_matrix(matrix *mat) {
     if (mat == NULL) {
         return;
     } else if (mat->parent == NULL && mat->ref_cnt <= 1) {
+        free(mat->data[0]);
         free(mat->data);
         free(mat);
     } else if (mat->parent != NULL && mat->parent->ref_cnt <= 1) {
@@ -448,7 +449,7 @@ int add_matrix(matrix *result, matrix *mat1, matrix *mat2) {
             _mm256_storeu_pd(res_pointer + i + 4, _mm256_add_pd(_mm256_loadu_pd(mat1_pointer + i + 4), _mm256_loadu_pd(mat2_pointer + i + 4)));
             _mm256_storeu_pd(res_pointer + i + 8, _mm256_add_pd(_mm256_loadu_pd(mat1_pointer + i + 8), _mm256_loadu_pd(mat2_pointer + i + 8)));
             _mm256_storeu_pd(res_pointer + i + 12, _mm256_add_pd(_mm256_loadu_pd(mat1_pointer + i + 12), _mm256_loadu_pd(mat2_pointer + i + 12)));
-        }
+        }      
 
         //Tail Case
 
@@ -751,27 +752,51 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
         }
         */
 
+        
+        if (mat1->rows < 32 || mat1->cols < 32 || mat2->rows < 32 || mat2->cols < 32) {
+            omp_set_num_threads(4);
+            #pragma omp parallel for
+            for (int i = 0; i < mat1->rows; i++) {
+                for (int j = 0; j < mat2->cols; j++) {
+                    for (int k = 0; k < mat2->rows; k++) {
+                        *(data + (i * mat2->cols) + j) += mat1->data[i][k] * b_transpose[j][k];
+                    }
+                }
+            }
 
-        omp_set_num_threads(4);
-        #pragma omp parallel for
-        for (int i = 0; i < mat1->rows; i++) {
-            for (int j = 0; j < mat2->cols; j++) {
-                for (int k = 0; k < mat2->rows; k++) {
-                    *(data + (i * mat2->cols) + j) += mat1->data[i][k] * b_transpose[j][k];
+            #pragma omp parallel for
+            for (int i = 0; i < mat1->rows * mat2->cols; i++) {
+                *(result->data[0] + i) = *(data + i);                
+            }
+            return 0;
+        }
+        
+        
+
+        
+        int blocksize = 32;
+        #pragma omp parallel for num_threads(4)
+        for (int i_blocked = 0; i_blocked < mat1->rows; i_blocked += blocksize) {
+            for (int j_blocked = 0; j_blocked < mat2->cols; j_blocked += blocksize) {
+                for (int k_blocked = 0; k_blocked < mat2->rows; k_blocked += blocksize) {
+                    for (int i = i_blocked; i < (i_blocked + blocksize) && i < mat1->rows; i++) {
+                        for (int j = j_blocked; j < j_blocked + blocksize && j < mat2->cols; j++) {
+                            for (int k = k_blocked; k < k_blocked + blocksize && k < mat2->rows; k++) {
+                                *(data + (i * mat2->cols) + j) += mat1->data[i][k] * mat2->data[k][j];
+                            }
+                        }
+                    }
                 }
             }
         }
+        
 
-        for (int i = 0; i < mat1->rows; i++) {
-            for (int j = 0; j < mat2->cols; j++) {
-                set(result, i, j, *(data + (i * mat2->cols) + j));
-            }
+
+        #pragma omp parallel for
+        for (int i = 0; i < mat1->rows * mat2->cols; i++) {
+            *(result->data[0] + i) = *(data + i);                
         }
-        free(b_t_rows);
-        free(b_transpose);
-        free(data);
         return 0;
-
 
 
         /*

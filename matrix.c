@@ -365,6 +365,28 @@ int add_matrix(matrix *result, matrix *mat1, matrix *mat2) {
             return 0;
         }
 
+        if (mat1->parent != NULL || mat2->parent != NULL) {
+            #pragma omp parallel for num_threads(8) collapse(2)
+            for (int i = 0; i < mat2->rows; i++) {        
+                for (int j = 0; j < mat2->cols / 16 * 16; j += 16) { 
+                    _mm256_storeu_pd(result->data[i] + j, _mm256_add_pd(_mm256_loadu_pd(mat1->data[i] + j), _mm256_loadu_pd(mat2->data[i] + j)));
+                    _mm256_storeu_pd(result->data[i] + j + 4, _mm256_add_pd(_mm256_loadu_pd(mat1->data[i] + j + 4), _mm256_loadu_pd(mat2->data[i] + j + 4)));
+                    _mm256_storeu_pd(result->data[i] + j + 8, _mm256_add_pd(_mm256_loadu_pd(mat1->data[i] + j + 8), _mm256_loadu_pd(mat2->data[i] + j + 8)));
+                    _mm256_storeu_pd(result->data[i] + j + 12, _mm256_add_pd(_mm256_loadu_pd(mat1->data[i] + j + 12), _mm256_loadu_pd(mat2->data[i] + j + 12)));
+                }
+                
+            }
+
+            //Tail Case
+            #pragma omp parallel for num_threads(8) collapse(2)
+            for (int i = 0; i < mat2->rows; i++) {  
+                for(int j = mat2->cols / 16 * 16; j < mat2->cols; j++) {
+                    *(result->data[i] + j) = *(mat1->data[i] + j) + *(mat2->data[i] + j);
+                }     
+            }
+            return 0;
+        }
+
         if (mat1->rows < 256 || mat1->cols < 256) {
             for (int i = 0; i < mat1->rows * mat1->cols / 4 * 4; i += 4) {
                 result->data[i / mat1->cols][i % mat1->cols] = mat1->data[i / mat1->cols][i % mat1->cols] + mat2->data[i / mat2->cols][i % mat2->cols];  
@@ -416,6 +438,28 @@ int sub_matrix(matrix *result, matrix *mat1, matrix *mat2) {
             return 0;
         }
 
+        if (mat1->parent != NULL || mat2->parent != NULL) {
+            #pragma omp parallel for num_threads(8) collapse(2)
+            for (int i = 0; i < mat2->rows; i++) {        
+                for (int j = 0; j < mat2->cols / 16 * 16; j += 16) { 
+                    _mm256_storeu_pd(result->data[i] + j, _mm256_sub_pd(_mm256_loadu_pd(mat1->data[i] + j), _mm256_loadu_pd(mat2->data[i] + j)));
+                    _mm256_storeu_pd(result->data[i] + j + 4, _mm256_sub_pd(_mm256_loadu_pd(mat1->data[i] + j + 4), _mm256_loadu_pd(mat2->data[i] + j + 4)));
+                    _mm256_storeu_pd(result->data[i] + j + 8, _mm256_sub_pd(_mm256_loadu_pd(mat1->data[i] + j + 8), _mm256_loadu_pd(mat2->data[i] + j + 8)));
+                    _mm256_storeu_pd(result->data[i] + j + 12, _mm256_sub_pd(_mm256_loadu_pd(mat1->data[i] + j + 12), _mm256_loadu_pd(mat2->data[i] + j + 12)));
+                }
+                
+            }
+
+            //Tail Case
+            #pragma omp parallel for num_threads(8) collapse(2)
+            for (int i = 0; i < mat2->rows; i++) {  
+                for(int j = mat2->cols / 16 * 16; j < mat2->cols; j++) {
+                    *(result->data[i] + j) = *(mat1->data[i] + j) - *(mat2->data[i] + j);
+                }     
+            }
+            return 0;
+        }
+
         if (mat1->rows < 256 || mat1->cols < 256) {
             for (int i = 0; i < mat1->rows * mat1->cols / 4 * 4; i += 4) {
                 result->data[i / mat1->cols][i % mat1->cols] = mat1->data[i / mat1->cols][i % mat1->cols] - mat2->data[i / mat2->cols][i % mat2->cols];  
@@ -463,31 +507,8 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
             PyErr_SetString(PyExc_RuntimeError, "Memory allocation failed!");
             return 1;
         }
-        /*
-        double *b_t_rows = (double*) calloc(mat1->rows * mat2->cols, sizeof(double));
-        if (b_t_rows== NULL) {
-            PyErr_SetString(PyExc_RuntimeError, "Memory allocation failed!");
-            return -1;
-        }
-
-        double **b_transpose = (double**) malloc(mat2->cols * sizeof(double*));        
-        if (b_transpose == NULL) {
-            PyErr_SetString(PyExc_RuntimeError, "Memory allocation failed!");
-            return -1;
-        }
-
-        for (int i = 0; i < mat2->cols; i++) {
-            b_transpose[i] = &(b_t_rows[i * mat1->rows]);
-        }
         
-        for (int i = 0; i < mat2->cols; i++) {
-            for (int j = 0; j < mat1->rows; j++) {
-                b_transpose[i][j] = mat2->data[j][i];
-            }
-        }
-
-        */
-
+ 
 
         /*
         //Naive cached improved solution
@@ -506,14 +527,32 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
         }
         */
 
-        //Naive cache blocking
-        
+        //Naive cache blocking, include later as a small matrix check
+        /*
+        if (mat1->rows < 32 || mat1->cols < 32 || mat2->rows < 32 || mat2->cols < 32) {
+            for (int j = 0; j < mat2->cols; j++) {
+                for (int k = 0; k < mat2->rows; k++) {
+                    for (int i = 0; i < mat1->rows; i++) {
+                        *(data + (i * mat2->cols) + j) += get(mat1, i, k) * get(mat2, k, j);
+                    }
+                }
+            }
+            for (int i = 0; i < mat1->rows; i++) {
+                for (int j = 0; j < mat2->cols; j++) {
+                    set(result, i, j, *(data + (i * mat2->cols) + j));
+                }
+            }
+            free(data);
+            return 0;
+        }
+        */
+
+        /*
         int blocksize = 32;
-        
         for (int i_blocked = 0; i_blocked < mat1->rows; i_blocked += blocksize) {
             for (int j_blocked = 0; j_blocked < mat2->cols; j_blocked += blocksize) {
                 for (int k_blocked = 0; k_blocked < mat2->rows; k_blocked += blocksize) {
-                    for (int i = i_blocked; i < (i_blocked + blocksize) && i < mat1->rows; i += 1) {
+                    for (int i = i_blocked; i < (i_blocked + blocksize) && i < mat1->rows; i++) {
                         for (int j = j_blocked; j < j_blocked + blocksize && j < mat2->cols; j++) {        
                             for (int k = k_blocked; k < k_blocked + blocksize && k < mat2->rows; k++) {
                                 *(data + (i * mat2->cols) + j) += mat1->data[i][k] * mat2->data[k][j];
@@ -529,7 +568,137 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
                 set(result, i, j, *(data + (i * mat2->cols) + j));
             }
         }
+        free(data);
         return 0;
+        */
+
+        double *b_t_rows = (double*) calloc(mat2->rows * mat2->cols, sizeof(double));
+        if (b_t_rows== NULL) {
+            PyErr_SetString(PyExc_RuntimeError, "Memory allocation failed!");
+            return -1;
+        }
+
+        double **b_transpose = (double**) malloc(mat2->cols * sizeof(double*));        
+        if (b_transpose == NULL) {
+            PyErr_SetString(PyExc_RuntimeError, "Memory allocation failed!");
+            return -1;
+        }
+
+        for (int i = 0; i < mat2->cols; i++) {
+            b_transpose[i] = &(b_t_rows[i * mat2->rows]);
+        }
+        
+        for (int i = 0; i < mat2->cols; i++) {
+            for (int j = 0; j < mat2->rows; j++) {
+                b_transpose[i][j] = mat2->data[j][i];
+            }
+        }
+        
+        //Fix this weird transpose bug
+        /*
+        for (int i = 0; i < mat1->rows / 4 * 4; i++) {
+            for (int j = 0; j < mat2->cols / 4 * 4; j+=4) {
+                __m256d c = _mm256_loadu_pd(data + (i * mat2->cols) + j);
+                for (int k = 0; k < mat2->rows / 4 * 4; k++) {
+                    __m256d b = _mm256_loadu_pd(b_transpose[j] + k);
+                    c = _mm256_fmadd_pd(_mm256_loadu_pd(mat1->data[i] + k), b, c);
+                }
+                _mm256_storeu_pd(data + (i * mat2->cols) + j ,c);
+                // *(data + (i * mat2->cols) + j) += mat1->data[i][k] * b_transpose[j][k];
+            }
+        }
+        */
+        
+        
+        //transposed weird tail
+        for (int i = 0; i < mat1->rows / 4 * 4; i++) {
+            for (int j = 0; j < mat2->cols / 4 * 4; j++) {
+                for (int k = 0; k < mat2->rows / 4 * 4; k++) {
+                    *(data + (i * mat2->cols) + j) += mat1->data[i][k] * b_transpose[j][k];
+                }
+
+                for (int k = mat2->rows / 4 * 4; k < mat2->rows; k++) {
+                    *(data + (i * mat2->cols) + j) += mat1->data[i][k] * b_transpose[j][k];
+                }
+            }
+            for (int j = mat2->cols / 4 * 4; j < mat2->cols; j++) {
+                for (int k = 0; k < mat2->rows; k++) {
+                    *(data + (i * mat2->cols) + j) += mat1->data[i][k] * b_transpose[j][k];
+                }
+            }
+        }
+
+        for (int i = mat1->rows / 4 * 4; i < mat1->rows; i++) {
+            for (int j = 0; j < mat2->cols / 4 * 4; j++) {
+                for (int k = 0; k < mat2->rows / 4 * 4; k++) {
+                    *(data + (i * mat2->cols) + j) += mat1->data[i][k] * b_transpose[j][k];
+                }
+
+                for (int k = mat2->rows / 4 * 4; k < mat2->rows; k++) {
+                    *(data + (i * mat2->cols) + j) += mat1->data[i][k] * b_transpose[j][k];
+                }
+            }
+            for (int j = mat2->cols / 4 * 4; j < mat2->cols; j++) {
+                for (int k = 0; k < mat2->rows; k++) {
+                    *(data + (i * mat2->cols) + j) += mat1->data[i][k] * b_transpose[j][k];
+                }
+            }
+        }
+        
+        /*
+        for (int i = 0; i < mat1->rows; i++) {
+            for (int j = 0; j < mat2->cols; j++) {
+                for (int k = 0; k < mat2->rows / 4 * 4; k += 4) {
+                    __m256d c = _mm256_loadu_pd(data + (i * mat2->cols) + j);
+                    __m256d b = _mm256_loadu_pd(b_transpose[j] + k);
+                    c = _mm256_fmadd_pd(_mm256_loadu_pd(mat1->data[i] + k), b, c);
+                }
+                _mm256_storeu_pd(data + (i * mat2->cols) + j, c);
+            }
+        }
+        
+        */
+        
+        /*
+        for (int i = 0; i < mat1->rows; i++) {
+            for (int j = mat2->cols / 4 * 4; j < mat2->cols; j++) {
+                for (int k = 0; k < mat2->rows; k++) {
+                    *(data + (i * mat2->cols) + j) += mat1->data[i][k] * b_transpose[j][k];
+                }
+            }
+        }
+        */
+        
+        
+
+        /*
+        int blocksize = 32;
+        for (int i_blocked = 0; i_blocked < mat1->rows; i_blocked += blocksize) {
+            for (int j_blocked = 0; j_blocked < mat2->cols; j_blocked += blocksize) {
+                for (int k_blocked = 0; k_blocked < mat2->rows; k_blocked += blocksize) {
+                    for (int i = i_blocked; i < (i_blocked + blocksize) && i < mat1->rows; i++) {
+                        for (int j = j_blocked; j < j_blocked + blocksize && j < mat2->cols; j++) {        
+                            for (int k = k_blocked; k < k_blocked + blocksize && k < mat2->rows; k++) {
+                                *(data + (i * mat2->cols) + j) += mat1->data[i][k] * b_transpose[j][k];
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        */
+
+        for (int i = 0; i < mat1->rows; i++) {
+            for (int j = 0; j < mat2->cols; j++) {
+                set(result, i, j, *(data + (i * mat2->cols) + j));
+            }
+        }
+        free(b_t_rows);
+        free(b_transpose);
+        free(data);
+        return 0;
+
+
 
         /*
         for (int i = 0; i < mat1->rows; i++) {

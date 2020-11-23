@@ -364,7 +364,7 @@ int add_matrix(matrix *result, matrix *mat1, matrix *mat2) {
         }
         return 0;
         */
-
+        /*
         if (mat1->rows < 16 || mat1->cols < 16) {
             for (int i = 0; i < mat1->rows; i++) {
                 for (int j = 0; j < mat1->cols; j++) {
@@ -425,6 +425,39 @@ int add_matrix(matrix *result, matrix *mat1, matrix *mat2) {
             result->data[i / mat1->cols][i % mat1->cols] = mat1->data[i / mat1->cols][i % mat1->cols] + mat2->data[i / mat2->cols][i % mat2->cols];  
         }
         return 0;
+        */
+
+        
+        if (mat1->rows < 16 || mat1->cols < 16 || mat1->parent != NULL || mat2->parent != NULL) {
+            for (int i = 0; i < mat1->rows; i++) {
+                for (int j = 0; j < mat1->cols; j++) {
+                    result->data[i][j] = mat1->data[i][j] + mat2->data[i][j];  
+                }
+            }
+            return 0;
+        }
+
+        double *res_pointer = result->data[0];
+        double *mat1_pointer = mat1->data[0];
+        double *mat2_pointer = mat2->data[0];
+
+        omp_set_num_threads(4);
+        #pragma omp parallel for
+        for (int i = 0; i < mat1->rows * mat1->cols / 16 * 16; i += 16) {        
+            _mm256_storeu_pd(res_pointer + i, _mm256_add_pd(_mm256_loadu_pd(mat1_pointer + i), _mm256_loadu_pd(mat2_pointer + i)));
+            _mm256_storeu_pd(res_pointer + i + 4, _mm256_add_pd(_mm256_loadu_pd(mat1_pointer + i + 4), _mm256_loadu_pd(mat2_pointer + i + 4)));
+            _mm256_storeu_pd(res_pointer + i + 8, _mm256_add_pd(_mm256_loadu_pd(mat1_pointer + i + 8), _mm256_loadu_pd(mat2_pointer + i + 8)));
+            _mm256_storeu_pd(res_pointer + i + 12, _mm256_add_pd(_mm256_loadu_pd(mat1_pointer + i + 12), _mm256_loadu_pd(mat2_pointer + i + 12)));
+        }
+
+        //Tail Case
+
+        for (int i = mat1->rows * mat1->cols / 16 * 16; i < mat1->rows * mat1->cols; i++) {
+            *(res_pointer + i) = *(mat1_pointer + i) + *(mat2_pointer + i); 
+        }
+        return 0;
+
+
     }
     return -1;
 }
@@ -437,6 +470,7 @@ int sub_matrix(matrix *result, matrix *mat1, matrix *mat2) {
     /* TODO: YOUR CODE HERE */
     if ((result->rows == mat1->rows && mat1->rows == mat2->rows) && 
         (result->cols == mat1->cols && mat1->cols == mat2->cols)) {
+        /*
         // SIMD/MIMD FULL SPEED
         if (mat1->rows < 16 || mat1->cols < 16) {
             for (int i = 0; i < mat1->rows; i++) {
@@ -498,6 +532,36 @@ int sub_matrix(matrix *result, matrix *mat1, matrix *mat2) {
             result->data[i / mat1->cols][i % mat1->cols] = mat1->data[i / mat1->cols][i % mat1->cols] - mat2->data[i / mat2->cols][i % mat2->cols];  
         }
         return 0;
+        */
+        if (mat1->rows < 16 || mat1->cols < 16 || mat1->parent != NULL || mat2->parent != NULL) {
+            for (int i = 0; i < mat1->rows; i++) {
+                for (int j = 0; j < mat1->cols; j++) {
+                    result->data[i][j] = mat1->data[i][j] - mat2->data[i][j];  
+                }
+            }
+            return 0;
+        }
+
+        double *res_pointer = result->data[0];
+        double *mat1_pointer = mat1->data[0];
+        double *mat2_pointer = mat2->data[0];
+
+        omp_set_num_threads(4);
+        #pragma omp parallel for
+        for (int i = 0; i < mat1->rows * mat1->cols / 16 * 16; i += 16) {        
+            _mm256_storeu_pd(res_pointer + i, _mm256_sub_pd(_mm256_loadu_pd(mat1_pointer + i), _mm256_loadu_pd(mat2_pointer + i)));
+            _mm256_storeu_pd(res_pointer + i + 4, _mm256_sub_pd(_mm256_loadu_pd(mat1_pointer + i + 4), _mm256_loadu_pd(mat2_pointer + i + 4)));
+            _mm256_storeu_pd(res_pointer + i + 8, _mm256_sub_pd(_mm256_loadu_pd(mat1_pointer + i + 8), _mm256_loadu_pd(mat2_pointer + i + 8)));
+            _mm256_storeu_pd(res_pointer + i + 12, _mm256_sub_pd(_mm256_loadu_pd(mat1_pointer + i + 12), _mm256_loadu_pd(mat2_pointer + i + 12)));
+        }
+
+        //Tail Case
+
+        for (int i = mat1->rows * mat1->cols / 16 * 16; i < mat1->rows * mat1->cols; i++) {
+            *(res_pointer + i) = *(mat1_pointer + i) - *(mat2_pointer + i); 
+        }
+        return 0;
+
     }
     return -1;
 }

@@ -609,7 +609,7 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
         }
         */
         
-        
+        /*
         //transposed weird tail
         for (int i = 0; i < mat1->rows / 4 * 4; i++) {
             for (int j = 0; j < mat2->cols / 4 * 4; j++) {
@@ -644,49 +644,50 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
                 }
             }
         }
-        
+        */
+
         /*
+        //matmul with intrinsics
+        omp_set_num_threads(4);
+        #pragma omp parallel for
         for (int i = 0; i < mat1->rows; i++) {
             for (int j = 0; j < mat2->cols; j++) {
+                //Simd for strided
+                double dotp = 0;
                 for (int k = 0; k < mat2->rows / 4 * 4; k += 4) {
-                    __m256d c = _mm256_loadu_pd(data + (i * mat2->cols) + j);
+                    __m256d a = _mm256_loadu_pd(mat1->data[i] + k);
                     __m256d b = _mm256_loadu_pd(b_transpose[j] + k);
-                    c = _mm256_fmadd_pd(_mm256_loadu_pd(mat1->data[i] + k), b, c);
+                    double *sum = (double*) malloc(sizeof(double) * 4);
+                    _mm256_storeu_pd(sum, _mm256_mul_pd(a, b));
+                    for (int x = 0; x < 4; x++) {
+                        dotp += sum[x];
+                    }
+                    free(sum);
                 }
-                _mm256_storeu_pd(data + (i * mat2->cols) + j, c);
+                *(data + (i * mat2->cols) + j) += dotp; 
             }
         }
         
-        */
-        
-        /*
+        //Tail case
         for (int i = 0; i < mat1->rows; i++) {
-            for (int j = mat2->cols / 4 * 4; j < mat2->cols; j++) {
-                for (int k = 0; k < mat2->rows; k++) {
+            for (int j = 0; j < mat2->cols; j++) {
+                for (int k = mat2->rows / 4 * 4; k < mat2->rows; k++) {
                     *(data + (i * mat2->cols) + j) += mat1->data[i][k] * b_transpose[j][k];
                 }
             }
         }
         */
-        
-        
 
-        /*
-        int blocksize = 32;
-        for (int i_blocked = 0; i_blocked < mat1->rows; i_blocked += blocksize) {
-            for (int j_blocked = 0; j_blocked < mat2->cols; j_blocked += blocksize) {
-                for (int k_blocked = 0; k_blocked < mat2->rows; k_blocked += blocksize) {
-                    for (int i = i_blocked; i < (i_blocked + blocksize) && i < mat1->rows; i++) {
-                        for (int j = j_blocked; j < j_blocked + blocksize && j < mat2->cols; j++) {        
-                            for (int k = k_blocked; k < k_blocked + blocksize && k < mat2->rows; k++) {
-                                *(data + (i * mat2->cols) + j) += mat1->data[i][k] * b_transpose[j][k];
-                            }
-                        }
-                    }
+
+        omp_set_num_threads(4);
+        #pragma omp parallel for
+        for (int i = 0; i < mat1->rows; i++) {
+            for (int j = 0; j < mat2->cols; j++) {
+                for (int k = 0; k < mat2->rows; k++) {
+                    *(data + (i * mat2->cols) + j) += mat1->data[i][k] * b_transpose[j][k];
                 }
             }
         }
-        */
 
         for (int i = 0; i < mat1->rows; i++) {
             for (int j = 0; j < mat2->cols; j++) {
@@ -804,6 +805,39 @@ int pow_matrix(matrix *result, matrix *mat, int pow) {
  */
 int neg_matrix(matrix *result, matrix *mat) {
     if ((result->rows == mat->rows) && (result->cols == mat->cols)) {
+        if (mat->rows < 16 || mat->cols < 16 || mat->parent != NULL) {
+            for (int i = 0; i < mat->rows; i++) {
+                for (int j = 0; j < mat->cols; j++) {
+                    result->data[i][j] = (-1.0) * mat->data[i][j];
+                }
+            }
+            return 0;
+        }
+
+        double *res_pointer = result->data[0];
+        double *mat_pointer = mat->data[0];
+
+        __m256d zero_vector = _mm256_set1_pd(0.0);
+
+        omp_set_num_threads(4);
+        #pragma omp parallel for
+        for (int i = 0; i < mat->rows * mat->cols / 16 * 16; i += 16) { 
+            _mm256_storeu_pd(res_pointer + i, _mm256_sub_pd(zero_vector, _mm256_loadu_pd(mat_pointer + i)));
+            _mm256_storeu_pd(res_pointer + i + 4, _mm256_sub_pd(zero_vector, _mm256_loadu_pd(mat_pointer + i + 4)));
+            _mm256_storeu_pd(res_pointer + i + 8, _mm256_sub_pd(zero_vector, _mm256_loadu_pd(mat_pointer + i + 8)));
+            _mm256_storeu_pd(res_pointer + i + 12, _mm256_sub_pd(zero_vector, _mm256_loadu_pd(mat_pointer + i + 12)));
+        }   
+    
+        //Tail Case
+        #pragma omp parallel for
+        for (int i = mat->rows * mat->cols / 16 * 16; i < mat->rows * mat->cols; i++) {  
+            *(res_pointer + i) = (-1.0) * *(mat_pointer + i);  
+        }
+        return 0;
+
+
+
+        /*
         if (mat->rows < 16 || mat->cols < 16) {
             for (int i = 0; i < mat->rows; i++) {
                 for (int j = 0; j < mat->cols; j++) {
@@ -814,13 +848,15 @@ int neg_matrix(matrix *result, matrix *mat) {
         }
 
         if (mat->rows < 256 || mat->cols < 256) {
+            omp_set_num_threads(4);
+            #pragma omp parallel for
             for (int i = 0; i < mat->rows * mat->cols / 4 * 4; i += 4) {
                 result->data[i / mat->cols][i % mat->cols] = (-1.0) * mat->data[i / mat->cols][i % mat->cols];  
                 result->data[(i + 1) / mat->cols][(i + 1) % mat->cols] = (-1.0) * mat->data[(i + 1) / mat->cols][(i + 1) % mat->cols];  
                 result->data[(i + 2) / mat->cols][(i + 2) % mat->cols] = (-1.0) * mat->data[(i + 2) / mat->cols][(i + 2) % mat->cols];  
                 result->data[(i + 3) / mat->cols][(i + 3) % mat->cols] = (-1.0) * mat->data[(i + 3) / mat->cols][(i + 3) % mat->cols];  
             }
-            
+            #pragma omp parallel for
             for (int i = mat->rows * mat->cols / 4 * 4; i < mat->rows * mat->cols; i++) {
                 result->data[i / mat->cols][i % mat->cols] = (-1.0) * mat->data[i / mat->cols][i % mat->cols];  
             }
@@ -842,6 +878,7 @@ int neg_matrix(matrix *result, matrix *mat) {
             result->data[i / mat->cols][i % mat->cols] = (-1.0) * mat->data[i / mat->cols][i % mat->cols];  
         }
         return 0;
+        */
     }
     return 1;
 }
@@ -853,7 +890,7 @@ int neg_matrix(matrix *result, matrix *mat) {
 int abs_matrix(matrix *result, matrix *mat) {
     /* TODO: YOUR CODE HERE */
     if ((result->rows == mat->rows) && (result->cols == mat->cols)) {
-
+        /*
         if (mat->rows < 16 || mat->cols < 16) {
             for (int i = 0; i < mat->rows; i++) {
                 for (int j = 0; j < mat->cols; j++) {
@@ -892,6 +929,38 @@ int abs_matrix(matrix *result, matrix *mat) {
             result->data[i / mat->cols][i % mat->cols] = fabs(mat->data[i / mat->cols][i % mat->cols]);
         }
         return 0;
+        */
+
+        if (mat->rows < 16 || mat->cols < 16 || mat->parent != NULL) {
+            for (int i = 0; i < mat->rows; i++) {
+                for (int j = 0; j < mat->cols; j++) {
+                    result->data[i][j] = fabs(mat->data[i][j]);
+                }
+            }
+            return 0;
+        }
+        
+
+        __m256d zero_vector = _mm256_set1_pd(0.0);
+        double *res_pointer = result->data[0];
+        double *mat_pointer = mat->data[0];
+        
+        omp_set_num_threads(4);
+        #pragma omp parallel for
+        for (int i = 0; i < mat->rows * mat->cols / 16 * 16; i += 16) { 
+            _mm256_storeu_pd(res_pointer + i, _mm256_max_pd(_mm256_sub_pd(zero_vector, _mm256_loadu_pd(mat_pointer + i)), _mm256_loadu_pd(mat_pointer + i)));
+            _mm256_storeu_pd(res_pointer + i + 4, _mm256_max_pd(_mm256_sub_pd(zero_vector, _mm256_loadu_pd(mat_pointer + i + 4)), _mm256_loadu_pd(mat_pointer + i + 4)));
+            _mm256_storeu_pd(res_pointer + i + 8, _mm256_max_pd(_mm256_sub_pd(zero_vector, _mm256_loadu_pd(mat_pointer + i + 8)), _mm256_loadu_pd(mat_pointer + i + 8)));
+            _mm256_storeu_pd(res_pointer + i + 12, _mm256_max_pd(_mm256_sub_pd(zero_vector, _mm256_loadu_pd(mat_pointer + i + 12)), _mm256_loadu_pd(mat_pointer + i + 12)));
+        }
+        
+        //Tail Case
+        #pragma omp parallel for
+        for (int i = mat->rows * mat->cols / 16 * 16; i < mat->rows * mat->cols; i++) {  
+            *(res_pointer + i) = fabs(*(mat_pointer + i));
+        }
+        return 0;
+
     }
 
     return -1;

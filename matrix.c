@@ -560,6 +560,7 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
                 }
             }
         }
+        
     
         /*
         for (int i = 0; i < mat1->rows; i++) {
@@ -620,6 +621,8 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
         for (int i = 0; i < mat1->rows * mat2->cols; i++) {
             *(result->data[0] + i) = *(data + i);                
         }
+        free(b_transpose[0]);
+        free(b_transpose);
         return 0;
 
 

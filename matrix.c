@@ -384,31 +384,6 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
         free(data);
         return 0;
         */
-
-        
-        double *b_t_rows = (double*) calloc(mat2->rows * mat2->cols, sizeof(double));
-        if (b_t_rows== NULL) {
-            PyErr_SetString(PyExc_RuntimeError, "Memory allocation failed!");
-            return -1;
-        }
-
-        double **b_transpose = (double**) malloc(mat2->cols * sizeof(double*));        
-        if (b_transpose == NULL) {
-            PyErr_SetString(PyExc_RuntimeError, "Memory allocation failed!");
-            return -1;
-        }
-
-        #pragma omp parallel for num_threads(4)
-        for (int i = 0; i < mat2->cols; i++) {
-            b_transpose[i] = &(b_t_rows[i * mat2->rows]);
-        }
-        
-        #pragma omp parallel for num_threads(4)
-        for (int i = 0; i < mat2->cols; i++) {
-            for (int j = 0; j < mat2->rows; j++) {
-                b_transpose[i][j] = mat2->data[j][i];
-            }
-        }
         
         
         //Fix this weird transpose bug
@@ -494,8 +469,37 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
             }
         }
         */
-        /*
-        if (mat1->rows < 32 || mat1->cols < 32 || mat2->rows < 32 || mat2->cols < 32) {
+        
+        
+        
+    
+        double *b_t_rows = (double*) calloc(mat2->rows * mat2->cols, sizeof(double));
+        if (b_t_rows== NULL) {
+            PyErr_SetString(PyExc_RuntimeError, "Memory allocation failed!");
+            return -1;
+        }
+
+        double **b_transpose = (double**) malloc(mat2->cols * sizeof(double*));        
+        if (b_transpose == NULL) {
+            PyErr_SetString(PyExc_RuntimeError, "Memory allocation failed!");
+            return -1;
+        }
+
+        #pragma omp parallel for num_threads(4)
+        for (int i = 0; i < mat2->cols; i++) {
+            b_transpose[i] = &(b_t_rows[i * mat2->rows]);
+        }
+        
+        #pragma omp parallel for num_threads(4)
+        for (int i = 0; i < mat2->cols; i++) {
+            for (int j = 0; j < mat2->rows; j++) {
+                b_transpose[i][j] = mat2->data[j][i];
+            }
+        }
+        
+        int blocksize = 64;
+
+        if (mat1->rows < blocksize || mat1->cols < blocksize || mat2->rows < blocksize || mat2->cols < blocksize || mat1->parent != NULL || mat2->parent != NULL) {
             omp_set_num_threads(4);
             #pragma omp parallel for
             for (int i = 0; i < mat1->rows; i++) {
@@ -506,16 +510,14 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
                 }
             }
 
-            #pragma omp parallel for
+            #pragma omp parallel for num_threads(4)
             for (int i = 0; i < mat1->rows * mat2->cols; i++) {
                 *(result->data[0] + i) = *(data + i);                
             }
             return 0;
         }
-        */
         
         
-        int blocksize = 32;
         #pragma omp parallel for num_threads(4)
         for (int i_blocked = 0; i_blocked < mat1->rows; i_blocked += blocksize) {
             for (int j_blocked = 0; j_blocked < mat2->cols; j_blocked += blocksize) {
@@ -550,6 +552,8 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
                 }
             }
         }
+        free(b_transpose[0]);
+        free(b_transpose);
         
     
         /*
@@ -612,8 +616,6 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
         for (int i = 0; i < mat1->rows * mat2->cols; i++) {
             *(result->data[0] + i) = *(data + i);                
         }
-        free(b_transpose[0]);
-        free(b_transpose);
         return 0;
 
 

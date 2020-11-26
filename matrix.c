@@ -358,9 +358,7 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
             free(data);
             return 0;
         }
-        */
 
-        /*
         int blocksize = 32;
         for (int i_blocked = 0; i_blocked < mat1->rows; i_blocked += blocksize) {
             for (int j_blocked = 0; j_blocked < mat2->cols; j_blocked += blocksize) {
@@ -386,93 +384,78 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
         */
         
         
-        //Fix this weird transpose bug
-        /*
-        for (int i = 0; i < mat1->rows / 4 * 4; i++) {
-            for (int j = 0; j < mat2->cols / 4 * 4; j+=4) {
-                __m256d c = _mm256_loadu_pd(data + (i * mat2->cols) + j);
-                for (int k = 0; k < mat2->rows / 4 * 4; k++) {
-                    __m256d b = _mm256_loadu_pd(b_transpose[j] + k);
-                    c = _mm256_fmadd_pd(_mm256_loadu_pd(mat1->data[i] + k), b, c);
-                }
-                _mm256_storeu_pd(data + (i * mat2->cols) + j ,c);
-                // *(data + (i * mat2->cols) + j) += mat1->data[i][k] * b_transpose[j][k];
-            }
-        }
-        */
-        
-        /*
-        //transposed weird tail
-        for (int i = 0; i < mat1->rows / 4 * 4; i++) {
-            for (int j = 0; j < mat2->cols / 4 * 4; j++) {
-                for (int k = 0; k < mat2->rows / 4 * 4; k++) {
-                    *(data + (i * mat2->cols) + j) += mat1->data[i][k] * b_transpose[j][k];
-                }
 
-                for (int k = mat2->rows / 4 * 4; k < mat2->rows; k++) {
-                    *(data + (i * mat2->cols) + j) += mat1->data[i][k] * b_transpose[j][k];
-                }
-            }
-            for (int j = mat2->cols / 4 * 4; j < mat2->cols; j++) {
-                for (int k = 0; k < mat2->rows; k++) {
-                    *(data + (i * mat2->cols) + j) += mat1->data[i][k] * b_transpose[j][k];
-                }
-            }
-        }
+        int blocksize = 32;
 
-        for (int i = mat1->rows / 4 * 4; i < mat1->rows; i++) {
-            for (int j = 0; j < mat2->cols / 4 * 4; j++) {
-                for (int k = 0; k < mat2->rows / 4 * 4; k++) {
-                    *(data + (i * mat2->cols) + j) += mat1->data[i][k] * b_transpose[j][k];
-                }
-
-                for (int k = mat2->rows / 4 * 4; k < mat2->rows; k++) {
-                    *(data + (i * mat2->cols) + j) += mat1->data[i][k] * b_transpose[j][k];
-                }
-            }
-            for (int j = mat2->cols / 4 * 4; j < mat2->cols; j++) {
-                for (int k = 0; k < mat2->rows; k++) {
-                    *(data + (i * mat2->cols) + j) += mat1->data[i][k] * b_transpose[j][k];
-                }
-            }
-        }
-        */
-
-        /*
-        //matmul with intrinsics
-        omp_set_num_threads(4);
-        #pragma omp parallel for
-        for (int i = 0; i < mat1->rows; i++) {
-            for (int j = 0; j < mat2->cols; j++) {
-                //Simd for strided
-                double dotp = 0;
-                for (int k = 0; k < mat2->rows / 4 * 4; k += 4) {
-                    __m256d a = _mm256_loadu_pd(mat1->data[i] + k);
-                    __m256d b = _mm256_loadu_pd(b_transpose[j] + k);
-                    double *sum = (double*) malloc(sizeof(double) * 4);
-                    _mm256_storeu_pd(sum, _mm256_mul_pd(a, b));
-                    for (int x = 0; x < 4; x++) {
-                        dotp += sum[x];
+        if (mat1->rows < blocksize || mat1->cols < blocksize || mat2->rows < blocksize || mat2->cols < blocksize || mat1->parent != NULL || mat2->parent != NULL) {
+            #pragma omp parallel for num_threads(4)
+            for (int i = 0; i < mat1->rows; i++) {
+                for (int j = 0; j < mat2->cols; j++) {
+                    for (int k = 0; k < mat2->rows; k++) {
+                        *(data + (i * mat2->cols) + j) += mat1->data[i][k] * mat2->data[k][j];
                     }
-                    free(sum);
                 }
-                *(data + (i * mat2->cols) + j) += dotp; 
+            }
+
+            #pragma omp parallel for num_threads(4)
+            for (int i = 0; i < mat1->rows * mat2->cols; i++) {
+                *(result->data[0] + i) = *(data + i);                
+            }
+            return 0;
+        }
+    
+        #pragma omp parallel for num_threads(4)
+        for (int i_blocked = 0; i_blocked < mat1->rows; i_blocked += blocksize) {
+            for (int j_blocked = 0; j_blocked < mat2->cols; j_blocked += blocksize) {
+                for (int k_blocked = 0; k_blocked < mat2->rows; k_blocked += blocksize) {
+                    for (int i = i_blocked; i < (i_blocked + blocksize) && i < mat1->rows; i++) { 
+                        for (int j = j_blocked; j < j_blocked + blocksize && j < mat2->cols / 16 * 16; j += 16) {
+                            __m256d c0 = _mm256_loadu_pd(data + (i * mat2->cols) + j);
+                            __m256d c1 = _mm256_loadu_pd(data + (i * mat2->cols) + j + 4);
+                            __m256d c2 = _mm256_loadu_pd(data + (i * mat2->cols) + j + 8);
+                            __m256d c3 = _mm256_loadu_pd(data + (i * mat2->cols) + j + 12);
+
+                            for (int k = k_blocked; k < k_blocked + blocksize && k < mat2->rows; k++) {                                
+                                c0 = _mm256_fmadd_pd(_mm256_broadcast_sd(mat1->data[i] + k), _mm256_loadu_pd(mat2->data[k] + j), c0);
+                                c1 = _mm256_fmadd_pd(_mm256_broadcast_sd(mat1->data[i] + k), _mm256_loadu_pd(mat2->data[k] + j + 4), c1);
+                                c2 = _mm256_fmadd_pd(_mm256_broadcast_sd(mat1->data[i] + k), _mm256_loadu_pd(mat2->data[k] + j + 8), c2);
+                                c3 = _mm256_fmadd_pd(_mm256_broadcast_sd(mat1->data[i] + k), _mm256_loadu_pd(mat2->data[k] + j + 12), c3);                         
+                            }
+                            _mm256_storeu_pd(data + (i * mat2->cols) + j, c0); 
+                            _mm256_storeu_pd(data + (i * mat2->cols) + j + 4, c1); 
+                            _mm256_storeu_pd(data + (i * mat2->cols) + j + 8, c2); 
+                            _mm256_storeu_pd(data + (i * mat2->cols) + j + 12, c3); 
+                        }
+                    }
+                }
             }
         }
-        
-        //Tail case
+
+        #pragma omp parallel for num_threads(4)
         for (int i = 0; i < mat1->rows; i++) {
-            for (int j = 0; j < mat2->cols; j++) {
-                for (int k = mat2->rows / 4 * 4; k < mat2->rows; k++) {
-                    *(data + (i * mat2->cols) + j) += mat1->data[i][k] * b_transpose[j][k];
+            for (int j = mat2->cols / 16 * 16; j < mat2->cols; j++) {
+                for (int k = 0; k < mat2->rows; k++) {
+                    *(data + (i * mat2->cols) + j) += mat1->data[i][k] * mat2->data[k][j];
                 }
             }
         }
-        */
         
+       
+        
+        
+        
+
         
         
     
+    
+        
+        
+
+        
+        /*
+        
+        // Cache blocking with transpose: 45X
         double *b_t_rows = (double*) calloc(mat2->rows * mat2->cols, sizeof(double));
         if (b_t_rows== NULL) {
             PyErr_SetString(PyExc_RuntimeError, "Memory allocation failed!");
@@ -517,14 +500,17 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
             return 0;
         }
         
-        
+        //jki
         #pragma omp parallel for num_threads(4)
-        for (int i_blocked = 0; i_blocked < mat1->rows; i_blocked += blocksize) {
-            for (int j_blocked = 0; j_blocked < mat2->cols; j_blocked += blocksize) {
-                for (int k_blocked = 0; k_blocked < mat2->rows; k_blocked += blocksize) {
-                    for (int i = i_blocked; i < (i_blocked + blocksize) && i < mat1->rows; i++) {
+        for (int j_blocked = 0; j_blocked < mat2->cols; j_blocked += blocksize) {
+            for (int k_blocked = 0; k_blocked < mat2->rows; k_blocked += blocksize) {
+                for (int i_blocked = 0; i_blocked < mat1->rows; i_blocked += blocksize) {
+                
+                
+                    for (int k = k_blocked; k < k_blocked + blocksize && k < mat2->rows / 16 * 16; k += 16) {                                
                         for (int j = j_blocked; j < j_blocked + blocksize && j < mat2->cols; j++) {
-                            for (int k = k_blocked; k < k_blocked + blocksize && k < mat2->rows / 16 * 16; k += 16) {                                
+                            for (int i = i_blocked; i < (i_blocked + blocksize) && i < mat1->rows; i++) {
+                            
                                 double sum1[4];
                                 _mm256_storeu_pd(sum1, _mm256_mul_pd(_mm256_loadu_pd(mat1->data[i] + k), _mm256_loadu_pd(b_transpose[j] + k)));
                                 *(data + (i * mat2->cols) + j) += (sum1[0] + sum1[1] + sum1[2] + sum1[3]);
@@ -554,109 +540,13 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
         }
         free(b_transpose[0]);
         free(b_transpose);
-        
-    
-        /*
-        for (int i = 0; i < mat1->rows; i++) {
-            for (int j = 0; j < mat2->cols / 4 * 4; j+=4) {
-                __m256d c = _mm256_loadu_pd(data + (i * mat2->rows) + j);
-                for (int k = 0; k < mat2->rows; k++) {
-                    __m256d a = _mm256_loadu_pd(mat1->data[i] + k);    
-                    __m256d b = _mm256_broadcast_sd(mat2->data[k] + j);
-                    __m256d mul = _mm256_mul_pd(a, b);
-                    c = _mm256_add_pd(mul, c);
-                }
-                _mm256_storeu_pd(data + (i * mat2->rows) + j, c);
-            }  
-            //Switch the ordering from j to k and put it in after k
-        }
         */
-        
-        
-        /*
-        //#pragma omp parallel for num_threads(4)    
-        for (int i = 0; i < mat1->rows / 4 * 4; i++) {
-            for (int k = 0; k < mat2->rows / 4 * 4; k++) {
-                
-                for (int j = 0; j < mat2->cols / 4 * 4; j += 4) {
-                    __m256d c = _mm256_loadu_pd(data + (i * mat2->rows) + j);
-                    __m256d a = _mm256_broadcast_sd(mat1->data[i] + k);    
-                    __m256d b = _mm256_loadu_pd(mat2->data[k] + j);
-                    __m256d mul = _mm256_mul_pd(a, b);
-                    c = _mm256_add_pd(mul, c);
-                    _mm256_storeu_pd(data + (i * mat2->rows) + j, c);
-                            
-                }
-                
-            }
-        }
-        */
-        
-
-        /*        
-        for (int i = 0; i < mat1->rows; i++) {
-            for (int j = mat2->cols / 4 * 4; j < mat2->cols; j++) {
-                for (int k = 0; k < mat2->rows; k++) {
-                    *(data + (i * mat2->cols) + j) += mat1->data[i][k] * mat2->data[k][j];
-                }
-            }
-        }
-        */
-        
-
- 
-        
     
-    
-        
-        
-
-
         #pragma omp parallel for num_threads(4)
         for (int i = 0; i < mat1->rows * mat2->cols; i++) {
             *(result->data[0] + i) = *(data + i);                
         }
         return 0;
-
-
-        /*
-        for (int i = 0; i < mat1->rows; i++) {
-            for (int j = 0; j < mat2->cols / 16 * 16; j += 16) {
-                
-                __m256d c[4];
-                for (int x = 0; x < 4; x++) {
-                    c[x] = _mm256_loadu_pd(data+i+x*4+j*mat2->cols);
-                }
-
-                for (int k = 0; k < mat2->rows; k++) {
-                    //(data + (i * mat2->cols) + j) += mat1->data[i][k] * mat2->data[k][j];
-                    
-                    
-                    
-                    __m256d b = _mm256_broadcast_sd(mat2->data[0]+k+j*mat2->cols);
-                    for (int x = 0; x < 4; x++) {
-                        c[x] = _mm256_fmadd_pd(_mm256_loadu_pd(mat1->data[0]+mat1->rows*k+x*4+i), b, c[x]);
-                    }
-                    
-      
-                }
-
-                for (int x = 0; x < 4; x++) {
-                    _mm256_storeu_pd(data + (j * mat2->cols) + i, c[x]);
-                }
-            }
-        }
-
-        for (int i = 0; i < mat1->rows; i++) {
-            for (int j = 0; j < mat2->cols; j++) {
-                set(result, i, j, *(data + (i * mat2->cols) + j));
-            }
-        }
-        */
-    
-
-        return 0;
-    
     }
     return -1;
 }
@@ -683,7 +573,6 @@ int pow_matrix(matrix *result, matrix *mat, int pow) {
         matrix *ret = NULL;
         allocate_matrix(&ret, mat->rows, mat->cols);
         
-        #pragma omp parallel for num_threads(4)
         for (int i = 0; i < result->rows; i++) {
             set(ret, i, i, 1);
         }
@@ -691,9 +580,10 @@ int pow_matrix(matrix *result, matrix *mat, int pow) {
         matrix *A = NULL;
         allocate_matrix(&A, mat->rows, mat->cols);
 
-        #pragma omp parallel for num_threads(4)
-        for (int i = 0; i < mat->rows * mat->cols; i++) {
-            *(A->data[0] + i) = *(mat->data[0] + i);
+        for (int i = 0; i < result->rows; i++) {
+            for (int j = 0; j < result->cols; j++) {
+                set(A, i, j, get(mat, i, j));
+            }
         }
         
         while (pow > 0) {
@@ -704,9 +594,10 @@ int pow_matrix(matrix *result, matrix *mat, int pow) {
             pow = pow / 2;
         }
 
-        #pragma omp parallel for num_threads(4)
-        for (int i = 0; i < result->rows * result->cols; i++) {
-            *(result->data[0] + i) = *(ret->data[0] + i);
+        for (int i = 0; i < result->rows; i++) {
+            for (int j = 0; j < result->cols; j++) {
+                set(result, i, j, get(ret, i, j));
+            }
         }
 
         deallocate_matrix(ret);

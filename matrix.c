@@ -221,12 +221,13 @@ void fill_matrix(matrix *mat, double val) {
         }
     }
     */
-    omp_set_num_threads(4);
-    #pragma omp parallel for
+    #pragma omp parallel for num_threads(4)
     for (int i = 0; i < rows * cols; i++) {
         *(mat->data[0] + i) = val;
     }
 }
+
+
 
 /*
  * Store the result of adding mat1 and mat2 to `result`.
@@ -440,18 +441,6 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
             }
         }
         
-       
-        
-        
-        
-
-        
-        
-    
-    
-        
-        
-
         
         /*
         
@@ -572,18 +561,16 @@ int pow_matrix(matrix *result, matrix *mat, int pow) {
         //Temps needed to be made in order to prevent writing over existing matrices.
         matrix *ret = NULL;
         allocate_matrix(&ret, mat->rows, mat->cols);
-        
+        #pragma omp parallel for num_threads(4)
         for (int i = 0; i < result->rows; i++) {
             set(ret, i, i, 1);
         }
          
         matrix *A = NULL;
         allocate_matrix(&A, mat->rows, mat->cols);
-
-        for (int i = 0; i < result->rows; i++) {
-            for (int j = 0; j < result->cols; j++) {
-                set(A, i, j, get(mat, i, j));
-            }
+        #pragma omp parallel for num_threads(4)
+        for (int i = 0; i < result->rows * result->cols; i++) {
+            *(A->data[0] + i) = *(mat->data[0] + i);
         }
         
         while (pow > 0) {
@@ -594,10 +581,11 @@ int pow_matrix(matrix *result, matrix *mat, int pow) {
             pow = pow / 2;
         }
 
-        for (int i = 0; i < result->rows; i++) {
-            for (int j = 0; j < result->cols; j++) {
-                set(result, i, j, get(ret, i, j));
-            }
+        #pragma omp parallel for num_threads(4)
+        for (int i = 0; i < result->rows * result->cols; i++) {
+            *(result->data[0] + i) = *(ret->data[0] + i);
+            
+            
         }
 
         deallocate_matrix(ret);

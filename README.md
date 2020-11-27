@@ -106,6 +106,16 @@ for (int i = 0; i < rows; i++) {
 }
 ```
 
+And here is how the memory addresses look like after revising it to be 1D row major order for a 4x4 matrix, again debugged through `gdb`.
+
+| Row/Col Index |     0    |     1    |     2    |     3    |
+|--------------:|:--------:|:--------:|:--------:|:--------:|
+|             0 | 0xe65940 | 0xe65948 | 0xe65950 | 0xe65958 |
+|             1 | 0xe65960 | 0xe65968 | 0xe65970 | 0xe65978 |
+|             2 | 0xe65980 | 0xe65988 | 0xe65990 | 0xe65998 |
+|             3 | 0xe659a0 | 0xe659a8 | 0xe659b0 | 0xe659b8 |
+
+
 #### Speed it up with SIMD
 Time to start speeding it up even more! We applied SIMD with [Intel Intrinsics](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#techs=SSE,SSE2,SSE3,SSSE3,SSE4_1,SSE4_2&expand=2184,2183,2177,3980,5999,6006,3594,5392,956). [Linked here](https://ark.intel.com/content/www/us/en/ark/products/75122/intel-core-i7-4770-processor-8m-cache-up-to-3-90-ghz.html) is the specs of the [Hive machines](https://www.ocf.berkeley.edu/~hkn/hivemind/). Vectorization provided near 3X speedup compared to `dumbpy`. We used the hints provided in the spec on which intrinsics should be used. We mainly used 256 bit vector operations as those were the maximum data provided by the Hive's Intel i7 4th generation processors. We also unrolled the loops for a minimal speed up, although we are not sure if that actually makes a difference. We weren't sure if the compiler actually automatically unrolls it, but did it to just stay safe!
 
@@ -194,6 +204,7 @@ for (int i = 0; i < mat1->rows; i++) {
 ```
 
 Before we move on, we must first observe why matrix multiplication is such a complex operation to optimize. We see that we keep hitting strides of the matrix b at the innermost for loop, we have to mitigate this or else, we miss a lot of cache hits.
+
 ![matmul](https://www.mymathtables.com/calculator/matrix/3x3-matrix-formula.png)
 
 #### SIMD

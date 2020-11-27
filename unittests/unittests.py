@@ -104,7 +104,7 @@ class TestAdd(TestCase):
         del nc_mat2
 
     def test_buildup_add(self):
-        for j in range(2, 1000):
+        for j in range(2, 100):
             speeds = []
             print(j)
             for i in range(10):
@@ -372,9 +372,9 @@ class TestMul(TestCase):
         for n in range(fuzz_rep):
             x = np.random.randint(1, fuzz)
             y = np.random.randint(1, fuzz)
-            print(nc_mat1.shape)
             dp_mat1, nc_mat1 = rand_dp_nc_matrix(x, y, seed=0)
             dp_mat2, nc_mat2 = rand_dp_nc_matrix(y, x, seed=1)
+            print(nc_mat1.shape)
             is_correct, speed_up = compute([dp_mat1, dp_mat2], [nc_mat1, nc_mat2], "mul")
             self.assertTrue(is_correct)
             print_speedup(speed_up)
@@ -447,9 +447,9 @@ class TestPow(TestCase):
         for n in range(fuzz_rep):
             p = np.random.randint(1, fuzz)
             dp_mat, nc_mat = rand_dp_nc_matrix(100, 100, seed=0)
+            print(nc_mat.shape)
             is_correct, speed_up = compute([dp_mat, p], [nc_mat, p], "pow")
             self.assertTrue(is_correct)
-            print(nc_mat.shape)
             print_speedup(speed_up)
             speeds.append(speed_up)
             del dp_mat

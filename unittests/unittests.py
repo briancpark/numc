@@ -70,8 +70,8 @@ class TestAdd(TestCase):
         print()
         speeds = []
         for n in range(fuzz_rep): 
-            row = np.random.randint(1, fuzz) 
-            col = np.random.randint(1, fuzz)
+            row = np.random.randint(2, fuzz) 
+            col = np.random.randint(2, fuzz)
             dp_mat1, nc_mat1 = rand_dp_nc_matrix(row, col, seed=0)
             dp_mat2, nc_mat2 = rand_dp_nc_matrix(row, col, seed=1)
             print(nc_mat1.shape)
@@ -174,14 +174,13 @@ class TestSub(TestCase):
         print()
         speeds = []
         for n in range(fuzz_rep):
-            row = np.random.randint(1, fuzz)
-            col = np.random.randint(1, fuzz)
+            row = np.random.randint(2, fuzz)
+            col = np.random.randint(2, fuzz)
             dp_mat1, nc_mat1 = rand_dp_nc_matrix(row, col, seed=0)
             dp_mat2, nc_mat2 = rand_dp_nc_matrix(row, col, seed=1)
             print(nc_mat1.shape)
             is_correct, speed_up = compute([dp_mat1, dp_mat2], [nc_mat1, nc_mat2], "sub")
             self.assertTrue(is_correct)
-            print(nc_mat1.shape)
             print_speedup(speed_up)
             speeds.append(speed_up)
             del dp_mat1
@@ -250,8 +249,8 @@ class TestAbs(TestCase):
         print()
         speeds = []
         for n in range(fuzz_rep): 
-            row = np.random.randint(1, fuzz) 
-            col = np.random.randint(1, fuzz)
+            row = np.random.randint(2, fuzz) 
+            col = np.random.randint(2, fuzz)
             dp_mat, nc_mat = rand_dp_nc_matrix(row, col, seed=0)
             print(nc_mat.shape)
             is_correct, speed_up = compute([dp_mat], [nc_mat], "abs")

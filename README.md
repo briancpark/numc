@@ -88,6 +88,14 @@ for (int i = 0; i < rows; i++) {
 }
 ```
 
+This causes memory to be fragmented. Here lies the memory addresses for a sample 4x4 matrix. This was calculated and debugged through `gdb`. We see that memory is fragmented in randomized areas in memory by rows.
+| Row/Col Index |     0    |     1    |     2    |     3    |
+|--------------:|:--------:|:--------:|:--------:|:--------:|
+|             0 | 0xe90d20 | 0xe90d28 | 0xe90d30 | 0xe90d38 |
+|             1 | 0xa8e9a0 | 0xa8e9a0 | 0xa8e9a0 | 0xa8e9a0 |
+|             2 | 0xe8ddb0 | 0xe8ddb8 | 0xe8ddc0 | 0xe8ddc8 |
+|             3 | 0xea0490 | 0xea0498 | 0xea04a0 | 0xea04a8 |
+
 As you can observe, a simple `calloc()` is performed for the whole `mat->data`. Then `rows` are separately malloced to populate it with where each row starts in the row-major 1D array. This is the key to making matrix data still callable through `mat->data[i][j]`. This also improved caching and causes less misses since the memory is now contiguous and improved on spatial locality.
 
 ```c
@@ -379,7 +387,7 @@ Used a simple divide and conquer method noted [here](https://www.hackerearth.com
 
 ### About the Hive CPUs
 Will be useful in determining optimization choices and constraints.
-| | |
+| Specification |  |
 |:---:|:----:|
 | CPU | [Intel(R) Core(TM) i7-4770 CPU @ 3.40GHz](https://ark.intel.com/content/www/us/en/ark/products/75122/intel-core-i7-4770-processor-8m-cache-up-to-3-90-ghz.html) |
 | RAM | 32 GB |

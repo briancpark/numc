@@ -110,6 +110,11 @@ for (int i = 0; i < mat1->rows * mat1->cols / 16 * 16; i += 16) {
     _mm256_storeu_pd(res_pointer + i + 8, _mm256_add_pd(_mm256_loadu_pd(mat1_pointer + i + 8), _mm256_loadu_pd(mat2_pointer + i + 8)));
     _mm256_storeu_pd(res_pointer + i + 12, _mm256_add_pd(_mm256_loadu_pd(mat1_pointer + i + 12), _mm256_loadu_pd(mat2_pointer + i + 12)));
 }      
+//Tail Case
+for (int i = mat1->rows * mat1->cols / 16 * 16; i < mat1->rows * mat1->cols; i++) {
+    *(res_pointer + i) = *(mat1_pointer + i) + *(mat2_pointer + i); 
+}
+return 0;
 ```
 
 #### I hope the rope is... Multithreaded
@@ -127,7 +132,12 @@ for (int i = 0; i < mat1->rows * mat1->cols / 16 * 16; i += 16) {
     _mm256_storeu_pd(res_pointer + i + 4, _mm256_add_pd(_mm256_loadu_pd(mat1_pointer + i + 4), _mm256_loadu_pd(mat2_pointer + i + 4)));
     _mm256_storeu_pd(res_pointer + i + 8, _mm256_add_pd(_mm256_loadu_pd(mat1_pointer + i + 8), _mm256_loadu_pd(mat2_pointer + i + 8)));
     _mm256_storeu_pd(res_pointer + i + 12, _mm256_add_pd(_mm256_loadu_pd(mat1_pointer + i + 12), _mm256_loadu_pd(mat2_pointer + i + 12)));
-}      
+}
+//Tail Case
+for (int i = mat1->rows * mat1->cols / 16 * 16; i < mat1->rows * mat1->cols; i++) {
+    *(res_pointer + i) = *(mat1_pointer + i) + *(mat2_pointer + i); 
+}
+return 0;
 ```
 
 #### Slicing Performance
@@ -148,10 +158,223 @@ We could certainly optimize it a bit more efficiently by carefully thinking abou
 
 
 ### Multiply
+This was mainly the hardest part of the project. Although we thought we have mastered matrix multiplication by doing it in RISC-V for project 2, it is even harder trying to parallelize it. There are things you need to consider such as how memory is meticuously handled. We will explain our troubles and difficulty spent debugging through the buildup of how matrix multiplication was sped up. Brian did a *LOT* of research on DGEMM papers. DGEMM stands for **D**ouble-precision, **GE**neral **M**atrix-**M**atrix multiplication. Resources include [Patterson and Hennesy's Computer Organization and Design](https://www.amazon.com/Computer-Organization-Design-RISC-V-Architecture/dp/0128122757), [Nicholas Weaver's 61C - Lecture 18 Spring 2019](https://www.youtube.com/watch?v=ibzkJAkn2_o) [slides](https://inst.eecs.berkeley.edu/~cs61c/sp19/lectures/lec18.pdf), [What Every Programmer Should Know About Memory by Ulrich Drepper](https://akkadia.org/drepper/cpumemory.pdf), and [Matrix Multiplication using SIMD](https://www.youtube.com/watch?v=3rU6BX7w8Tk&list=PLKT8ER2pEV3umVSMwd06LY_eSIX-DnU6A&index=1).
+
+#### The Naive Solution
+Very simple. After project 2, this code is very simple
+
+Just note that a copy of the matrix is made with `*data`. This is necessary in order to prevent memory overwrite when doing operations like `pow_matrix()`, which you will see later that it writes over `mat1->data` and `mat2->data`. (e.g.) Something in `python3` like this can make things problematic.
+
+```python3
+nc_mat1 = nc_mat1 * nc_mat2
+```
+
+Thus, here is the implementation of the naive version.
+```c
+double *data = (double*) calloc(mat1->rows * mat2->cols, sizeof(double));
+
+for (int i = 0; i < mat1->rows; i++) {
+    for (int j = 0; j < mat2->cols; j++) {
+        for (int k = 0; k < mat2->rows; k++) {
+            *(data + (i * mat2->cols) + j) += mat1->data[i][k] * mat2->data[k][j];
+        }
+    }
+}
+```
+
+#### SIMD
+Again, Intel Intrinsics saves the day with subword parallelism. Fortunately, Patterson and Henessy paints the picture very elegantly in their textbook, as their newest edition includes a buildup of how to improve DGEMM performance with SIMD, cache blocking, and multithreaded parallelism. Unfortunately, the Patterson and Hennessy implementation does not work out of the box, because they only did it for square matrices with dimension of `2^n`, so a tail case needed to be implemented as well. Here is how that looks like with a few more optimizations like loop unrolling as well:
+
+```c
+for (int i = 0; i < mat1->rows; i++) { 
+    for (int j = 0; j < mat2->cols / 16 * 16; j += 16) {
+        __m256d c0 = _mm256_loadu_pd(data + (i * mat2->cols) + j);
+        __m256d c1 = _mm256_loadu_pd(data + (i * mat2->cols) + j + 4);
+        __m256d c2 = _mm256_loadu_pd(data + (i * mat2->cols) + j + 8);
+        __m256d c3 = _mm256_loadu_pd(data + (i * mat2->cols) + j + 12);
+
+        for (int k = 0; k < mat2->rows; k++) {                                
+            c0 = _mm256_fmadd_pd(_mm256_broadcast_sd(mat1->data[i] + k), _mm256_loadu_pd(mat2->data[k] + j), c0);
+            c1 = _mm256_fmadd_pd(_mm256_broadcast_sd(mat1->data[i] + k), _mm256_loadu_pd(mat2->data[k] + j + 4), c1);
+            c2 = _mm256_fmadd_pd(_mm256_broadcast_sd(mat1->data[i] + k), _mm256_loadu_pd(mat2->data[k] + j + 8), c2);
+            c3 = _mm256_fmadd_pd(_mm256_broadcast_sd(mat1->data[i] + k), _mm256_loadu_pd(mat2->data[k] + j + 12), c3);                         
+        }
+        _mm256_storeu_pd(data + (i * mat2->cols) + j, c0); 
+        _mm256_storeu_pd(data + (i * mat2->cols) + j + 4, c1); 
+        _mm256_storeu_pd(data + (i * mat2->cols) + j + 8, c2); 
+        _mm256_storeu_pd(data + (i * mat2->cols) + j + 12, c3); 
+    }
+}
+
+for (int i = 0; i < mat1->rows; i++) {
+    for (int j = mat2->cols / 16 * 16; j < mat2->cols; j++) {
+        for (int k = 0; k < mat2->rows; k++) {
+            *(data + (i * mat2->cols) + j) += mat1->data[i][k] * mat2->data[k][j];
+        }
+    }
+}
+```
+
+#### Cache Blocking
+We can do even better with the naive implementation by introducing cache blocking. Looking at the 4th generation i7 architecture, it has a 32K instruction and data cache. So we used that to our advantage and cache blocked the operations for better cache performance, causing less misses. This was inspired heavily from the Patterson and Hennessy implemenation, but other research papers call this cache tiling. This was the first improvement we started out with, and we acheived a near 7X speedup alone with the naive implementation:
+
+```c
+int blocksize = 32;
+for (int i_blocked = 0; i_blocked < mat1->rows; i_blocked += blocksize) {
+    for (int j_blocked = 0; j_blocked < mat2->cols; j_blocked += blocksize) {
+        for (int k_blocked = 0; k_blocked < mat2->rows; k_blocked += blocksize) {
+            for (int i = i_blocked; i < (i_blocked + blocksize) && i < mat1->rows; i++) {
+                for (int j = j_blocked; j < j_blocked + blocksize && j < mat2->cols; j++) {        
+                    for (int k = k_blocked; k < k_blocked + blocksize && k < mat2->rows; k++) {
+                        *(data + (i * mat2->cols) + j) += mat1->data[i][k] * mat2->data[k][j];
+                    }
+                }
+            }
+        }
+    }
+}
+```
+
+#### Multithreaded
+We have 6 `for` loops with all these optimizations. We simply put `#pragma omp parallel for num_threads(4)` on the outer most `for` loop. And that helped us achieve near 120X perfomance.
+
+```c
+#pragma omp parallel for num_threads(4)
+for (int i_blocked = 0; i_blocked < mat1->rows; i_blocked += blocksize) {
+    for (int j_blocked = 0; j_blocked < mat2->cols; j_blocked += blocksize) {
+        for (int k_blocked = 0; k_blocked < mat2->rows; k_blocked += blocksize) {
+            for (int i = i_blocked; i < (i_blocked + blocksize) && i < mat1->rows; i++) { 
+                for (int j = j_blocked; j < j_blocked + blocksize && j < mat2->cols / 16 * 16; j += 16) {
+                    __m256d c0 = _mm256_loadu_pd(data + (i * mat2->cols) + j);
+                    __m256d c1 = _mm256_loadu_pd(data + (i * mat2->cols) + j + 4);
+                    __m256d c2 = _mm256_loadu_pd(data + (i * mat2->cols) + j + 8);
+                    __m256d c3 = _mm256_loadu_pd(data + (i * mat2->cols) + j + 12);
+
+                    for (int k = k_blocked; k < k_blocked + blocksize && k < mat2->rows; k++) {                                
+                        c0 = _mm256_fmadd_pd(_mm256_broadcast_sd(mat1->data[i] + k), _mm256_loadu_pd(mat2->data[k] + j), c0);
+                        c1 = _mm256_fmadd_pd(_mm256_broadcast_sd(mat1->data[i] + k), _mm256_loadu_pd(mat2->data[k] + j + 4), c1);
+                        c2 = _mm256_fmadd_pd(_mm256_broadcast_sd(mat1->data[i] + k), _mm256_loadu_pd(mat2->data[k] + j + 8), c2);
+                        c3 = _mm256_fmadd_pd(_mm256_broadcast_sd(mat1->data[i] + k), _mm256_loadu_pd(mat2->data[k] + j + 12), c3);                         
+                    }
+                    _mm256_storeu_pd(data + (i * mat2->cols) + j, c0); 
+                    _mm256_storeu_pd(data + (i * mat2->cols) + j + 4, c1); 
+                    _mm256_storeu_pd(data + (i * mat2->cols) + j + 8, c2); 
+                    _mm256_storeu_pd(data + (i * mat2->cols) + j + 12, c3); 
+                }
+            }
+        }
+    }
+}
+
+#pragma omp parallel for num_threads(4)
+for (int i = 0; i < mat1->rows; i++) {
+    for (int j = mat2->cols / 16 * 16; j < mat2->cols; j++) {
+        for (int k = 0; k < mat2->rows; k++) {
+            *(data + (i * mat2->cols) + j) += mat1->data[i][k] * mat2->data[k][j];
+        }
+    }
+}
+```
+
+#### Failed Idea (Matrix Transpose)
+This was one of our first drafts with matrix multiplication, and we though transforming the matrix would work, as the dot products can be efficiently organized and multiplied. But this only gave us a 45X speedup. It was probably due to a bottleneck of trying to transpose and copy the matrix down, not pulling down the amortized runtime. Also there are too many stores going on, so eventually we had to scrap this early on. Fortunately, we started the project early and were able to come up with the 120X solution shown above. 
+
+```c
+double *b_t_rows = (double*) calloc(mat2->rows * mat2->cols, sizeof(double));
+if (b_t_rows== NULL) {
+    PyErr_SetString(PyExc_RuntimeError, "Memory allocation failed!");
+    return -1;
+}
+
+double **b_transpose = (double**) malloc(mat2->cols * sizeof(double*));        
+if (b_transpose == NULL) {
+    PyErr_SetString(PyExc_RuntimeError, "Memory allocation failed!");
+    return -1;
+}
+
+#pragma omp parallel for num_threads(4)
+for (int i = 0; i < mat2->cols; i++) {
+    b_transpose[i] = &(b_t_rows[i * mat2->rows]);
+}
+
+#pragma omp parallel for num_threads(4)
+for (int i = 0; i < mat2->cols; i++) {
+    for (int j = 0; j < mat2->rows; j++) {
+        b_transpose[i][j] = mat2->data[j][i];
+    }
+}
+
+int blocksize = 64;
+
+if (mat1->rows < blocksize || mat1->cols < blocksize || mat2->rows < blocksize || mat2->cols < blocksize || mat1->parent != NULL || mat2->parent != NULL) {
+    omp_set_num_threads(4);
+    #pragma omp parallel for
+    for (int i = 0; i < mat1->rows; i++) {
+        for (int j = 0; j < mat2->cols; j++) {
+            for (int k = 0; k < mat2->rows; k++) {
+                *(data + (i * mat2->cols) + j) += mat1->data[i][k] * b_transpose[j][k];
+            }
+        }
+    }
+
+    #pragma omp parallel for num_threads(4)
+    for (int i = 0; i < mat1->rows * mat2->cols; i++) {
+        *(result->data[0] + i) = *(data + i);                
+    }
+    return 0;
+}
+
+//jki
+#pragma omp parallel for num_threads(4)
+for (int j_blocked = 0; j_blocked < mat2->cols; j_blocked += blocksize) {
+    for (int k_blocked = 0; k_blocked < mat2->rows; k_blocked += blocksize) {
+        for (int i_blocked = 0; i_blocked < mat1->rows; i_blocked += blocksize) {
+        
+        
+            for (int k = k_blocked; k < k_blocked + blocksize && k < mat2->rows / 16 * 16; k += 16) {                                
+                for (int j = j_blocked; j < j_blocked + blocksize && j < mat2->cols; j++) {
+                    for (int i = i_blocked; i < (i_blocked + blocksize) && i < mat1->rows; i++) {
+                    
+                        double sum1[4];
+                        _mm256_storeu_pd(sum1, _mm256_mul_pd(_mm256_loadu_pd(mat1->data[i] + k), _mm256_loadu_pd(b_transpose[j] + k)));
+                        *(data + (i * mat2->cols) + j) += (sum1[0] + sum1[1] + sum1[2] + sum1[3]);
+                        double sum2[4];
+                        _mm256_storeu_pd(sum2, _mm256_mul_pd(_mm256_loadu_pd(mat1->data[i] + k + 4), _mm256_loadu_pd(b_transpose[j] + k + 4)));
+                        *(data + (i * mat2->cols) + j) += (sum2[0] + sum2[1] + sum2[2] + sum2[3]);
+                        double sum3[4];
+                        _mm256_storeu_pd(sum3, _mm256_mul_pd(_mm256_loadu_pd(mat1->data[i] + k + 8), _mm256_loadu_pd(b_transpose[j] + k + 8)));
+                        *(data + (i * mat2->cols) + j) += (sum3[0] + sum3[1] + sum3[2] + sum3[3]);
+                        double sum4[4];
+                        _mm256_storeu_pd(sum4, _mm256_mul_pd(_mm256_loadu_pd(mat1->data[i] + k + 12), _mm256_loadu_pd(b_transpose[j] + k + 12)));
+                        *(data + (i * mat2->cols) + j) += (sum4[0] + sum4[1] + sum4[2] + sum4[3]);
+                    }
+                }
+            }
+        }
+    }
+}
+
+#pragma omp parallel for num_threads(4)
+for (int i = 0; i < mat1->rows; i++) {
+    for (int j = 0; j < mat2->cols; j++) {
+        for (int k = mat2->rows / 16 * 16; k < mat2->rows; k++) {
+            *(data + (i * mat2->cols) + j) += mat1->data[i][k] * b_transpose[j][k];
+        }
+    }
+}
+free(b_transpose[0]);
+free(b_transpose);
+        
+```
+
+#### Infeasible Ideas (Strassen's)
+We debated over this one heavily. Having taken CS 170, we thought this would be a very nice divide and conquer method, being easily parallizable and cut down on runtime. Although Strassen's performs O(n^(2.81)) compared to O(n^3), there was an issue with how Strassens work. Strassens performs poorly on smaller matrices. Also, Strassen's requires matrix dimensions to be a power of 2 with it being square. This is possible to do by zero padding matrices, but we also lose performance if the matrix is not relatively square or we're doing matrix-vector multiplication. We could be working with very sparse matrices if the dimensions are unaligned. `allocate_matrix()` would need to be tuned to zero pad matrices, potentially messing with the functionality of other matrix operations. Cache blocking and SIMD would be operated on data with `0.0` if it's zero padded, so it sounds like a bad algorithm to implement. 
+
+#### Can We Do Even Better (Conclusion)
 
 
 ### Power
-
+Used a simple divide and conquer method.
 
 ### About the Hive CPUs
 Will be useful in determining optimization choices and constraints.

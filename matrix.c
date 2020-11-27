@@ -59,6 +59,7 @@ void rand_matrix(matrix *result, unsigned int seed, double low, double high) {
  */
 int allocate_matrix(matrix **mat, int rows, int cols) {
     /* TODO: YOUR CODE HERE */
+    //How to allocate continguous memory was referenced here: https://www.dimlucas.com/index.php/2017/02/18/the-proper-way-to-dynamically-create-a-two-dimensional-array-in-c/
     if (rows < 1 || cols < 1) {
         PyErr_SetString(PyExc_TypeError, "Nonpositive dimensions!");
         return -1;
@@ -82,28 +83,26 @@ int allocate_matrix(matrix **mat, int rows, int cols) {
 
     (*mat)->ref_cnt = 1;
     (*mat)->parent = NULL;
-    (*mat)->data = (double**) malloc(sizeof(double*) * rows);
 
-    if ((*mat)->data == NULL) {
+    double *arr = calloc(rows * cols, sizeof(double));
+    if (arr == NULL) {
         free((*mat));
         PyErr_SetString(PyExc_RuntimeError, "Memory allocation failed!");
         return -1;
     }
 
-    for (int i = 0; i < rows; i++) {
-        (*mat)->data[i] = (double *) calloc(cols, sizeof(double));
-        
-        if ((*mat)->data[i] == NULL) {
-            for (int j = 0; j < i; j++) {
-                free((*mat)->data[j]);
-            }
-            free((*mat)->data);
-            free((*mat));
-            PyErr_SetString(PyExc_RuntimeError, "Memory allocation failed!");
-            return -1;
-        }
+    (*mat)->data = malloc(rows * sizeof(double*));
+    if ((*mat)->data == NULL) {
+        free(arr);
+        free((*mat));
+        PyErr_SetString(PyExc_RuntimeError, "Memory allocation failed!");
+        return -1;
     }
 
+    #pragma omp parallel for num_threads(4)
+    for (int i = 0; i < rows; i++) {
+        (*mat)->data[i] = &(arr[i * cols]);
+    }
     return 0;
 }
 
@@ -117,14 +116,6 @@ int allocate_matrix(matrix **mat, int rows, int cols) {
 int allocate_matrix_ref(matrix **mat, matrix *from, int row_offset, int col_offset,
                         int rows, int cols) {
     /* TODO: YOUR CODE HERE */
-
-    /* TODO: May not even need this, but check what IndexError really correlates to
-    if (row_offset > rows || col_offset > cols) {
-        PyErr_SetString(PyExc_IndexError, "Index out of range");
-        return -1;
-    }
-    */
-
     if (rows < 0 || cols < 0) {
         PyErr_SetString(PyExc_TypeError, "Negative index");
         return -1;
@@ -151,9 +142,23 @@ int allocate_matrix_ref(matrix **mat, matrix *from, int row_offset, int col_offs
     (*mat)->parent = from;
 
     (*mat)->data = (double**) malloc(sizeof(double*) * rows);
-
+    if ((*mat)->data == NULL) {
+        free((*mat));
+        PyErr_SetString(PyExc_RuntimeError, "Memory allocation failed!");
+        return -1;
+    }
     for (int i = 0; i < rows; i++) {
         (*mat)->data[i] = from->data[i + row_offset] + col_offset;
+
+        if ((*mat)->data[i] == NULL) {
+            for (int j = 0; j < i; j++) {
+                free((*mat)->data[j]);
+            }
+            free((*mat)->data);
+            free((*mat));
+            PyErr_SetString(PyExc_RuntimeError, "Memory allocation failed!");
+            return -1;
+        }
     }
 
     return 0;
@@ -173,6 +178,7 @@ void deallocate_matrix(matrix *mat) {
     if (mat == NULL) {
         return;
     } else if (mat->parent == NULL && mat->ref_cnt <= 1) {
+        free(mat->data[0]);
         free(mat->data);
         free(mat);
     } else if (mat->parent != NULL && mat->parent->ref_cnt <= 1) {
@@ -208,12 +214,20 @@ void fill_matrix(matrix *mat, double val) {
     /* TODO: YOUR CODE HERE */
     int rows = mat->rows;
     int cols = mat->cols;
+    /*
     for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
             mat->data[i][j] = val;
         }
     }
+    */
+    #pragma omp parallel for num_threads(4)
+    for (int i = 0; i < rows * cols; i++) {
+        *(mat->data[0] + i) = val;
+    }
 }
+
+
 
 /*
  * Store the result of adding mat1 and mat2 to `result`.
@@ -223,10 +237,32 @@ int add_matrix(matrix *result, matrix *mat1, matrix *mat2) {
     /* TODO: YOUR CODE HERE */
     if ((result->rows == mat1->rows && mat1->rows == mat2->rows) && 
         (result->cols == mat1->cols && mat1->cols == mat2->cols)) {
-        for (int i = 0; i < mat1->rows; i++) {
-            for (int j = 0; j < mat2->cols; j++) {
-                set(result, i, j, get(mat1, i, j) + get(mat2, i, j));
+        if (mat1->rows < 16 || mat1->cols < 16 || mat1->parent != NULL || mat2->parent != NULL) {
+            for (int i = 0; i < mat1->rows; i++) {
+                for (int j = 0; j < mat1->cols; j++) {
+                    result->data[i][j] = mat1->data[i][j] + mat2->data[i][j];  
+                }
             }
+            return 0;
+        }
+
+        double *res_pointer = result->data[0];
+        double *mat1_pointer = mat1->data[0];
+        double *mat2_pointer = mat2->data[0];
+
+        omp_set_num_threads(4);
+        #pragma omp parallel for
+        for (int i = 0; i < mat1->rows * mat1->cols / 16 * 16; i += 16) {        
+            _mm256_storeu_pd(res_pointer + i, _mm256_add_pd(_mm256_loadu_pd(mat1_pointer + i), _mm256_loadu_pd(mat2_pointer + i)));
+            _mm256_storeu_pd(res_pointer + i + 4, _mm256_add_pd(_mm256_loadu_pd(mat1_pointer + i + 4), _mm256_loadu_pd(mat2_pointer + i + 4)));
+            _mm256_storeu_pd(res_pointer + i + 8, _mm256_add_pd(_mm256_loadu_pd(mat1_pointer + i + 8), _mm256_loadu_pd(mat2_pointer + i + 8)));
+            _mm256_storeu_pd(res_pointer + i + 12, _mm256_add_pd(_mm256_loadu_pd(mat1_pointer + i + 12), _mm256_loadu_pd(mat2_pointer + i + 12)));
+        }      
+
+        //Tail Case
+        #pragma omp parallel for num_threads(4)
+        for (int i = mat1->rows * mat1->cols / 16 * 16; i < mat1->rows * mat1->cols; i++) {
+            *(res_pointer + i) = *(mat1_pointer + i) + *(mat2_pointer + i); 
         }
         return 0;
     }
@@ -241,14 +277,34 @@ int sub_matrix(matrix *result, matrix *mat1, matrix *mat2) {
     /* TODO: YOUR CODE HERE */
     if ((result->rows == mat1->rows && mat1->rows == mat2->rows) && 
         (result->cols == mat1->cols && mat1->cols == mat2->cols)) {
-        for (int i = 0; i < mat1->rows; i++) {
-            for (int j = 0; j < mat1->cols; j++) {
-                set(result, i, j, get(mat1, i, j) - get(mat2, i, j));
+        if (mat1->rows < 16 || mat1->cols < 16 || mat1->parent != NULL || mat2->parent != NULL) {
+            for (int i = 0; i < mat1->rows; i++) {
+                for (int j = 0; j < mat1->cols; j++) {
+                    result->data[i][j] = mat1->data[i][j] - mat2->data[i][j];  
+                }
             }
+            return 0;
+        }
+
+        double *res_pointer = result->data[0];
+        double *mat1_pointer = mat1->data[0];
+        double *mat2_pointer = mat2->data[0];
+
+        #pragma omp parallel for num_threads(4)
+        for (int i = 0; i < mat1->rows * mat1->cols / 16 * 16; i += 16) {        
+            _mm256_storeu_pd(res_pointer + i, _mm256_sub_pd(_mm256_loadu_pd(mat1_pointer + i), _mm256_loadu_pd(mat2_pointer + i)));
+            _mm256_storeu_pd(res_pointer + i + 4, _mm256_sub_pd(_mm256_loadu_pd(mat1_pointer + i + 4), _mm256_loadu_pd(mat2_pointer + i + 4)));
+            _mm256_storeu_pd(res_pointer + i + 8, _mm256_sub_pd(_mm256_loadu_pd(mat1_pointer + i + 8), _mm256_loadu_pd(mat2_pointer + i + 8)));
+            _mm256_storeu_pd(res_pointer + i + 12, _mm256_sub_pd(_mm256_loadu_pd(mat1_pointer + i + 12), _mm256_loadu_pd(mat2_pointer + i + 12)));
+        }
+
+        //Tail Case
+        #pragma omp parallel for num_threads(4)
+        for (int i = mat1->rows * mat1->cols / 16 * 16; i < mat1->rows * mat1->cols; i++) {
+            *(res_pointer + i) = *(mat1_pointer + i) - *(mat2_pointer + i); 
         }
         return 0;
     }
-    PyErr_SetString(PyExc_TypeError, "Invalid dimensions");
     return -1;
 }
 
@@ -261,29 +317,81 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
     /* TODO: YOUR CODE HERE */
     if ((result->rows == mat1->rows) && (result->cols == mat2->cols) && (mat1->cols == mat2->rows)) { 
         
-        double *data = (double*) malloc(sizeof(double) * mat1->rows * mat2->cols);
+        double *data = (double*) calloc(mat1->rows * mat2->cols, sizeof(double));
         if (data == NULL) {
+            PyErr_SetString(PyExc_RuntimeError, "Memory allocation failed!");
             return 1;
         }
+        
+        int blocksize = 32;
 
-        for (int i = 0; i < mat1->rows; i++) {
-            for (int j = 0; j < mat2->cols; j++) {
-                double dot_product = 0;
-                for (int k = 0; k < mat2->rows; k++) {
-                    dot_product += get(mat1, i, k) * get(mat2, k, j);
+        if (mat1->rows < blocksize || mat1->cols < blocksize || mat2->rows < blocksize || mat2->cols < blocksize || mat1->parent != NULL || mat2->parent != NULL) {
+            #pragma omp parallel for num_threads(4)
+            for (int i = 0; i < mat1->rows; i++) {
+                for (int j = 0; j < mat2->cols; j++) {
+                    for (int k = 0; k < mat2->rows; k++) {
+                        *(data + (i * mat2->cols) + j) += mat1->data[i][k] * mat2->data[k][j];
+                    }
                 }
-                *(data + (i * mat2->cols) + j) = dot_product;
+            }
+
+            #pragma omp parallel for num_threads(4)
+            for (int i = 0; i < mat1->rows * mat2->cols; i++) {
+                *(result->data[0] + i) = *(data + i);                
+            }
+            return 0;
+        }
+    
+        #pragma omp parallel for num_threads(4)
+        for (int i_blocked = 0; i_blocked < mat1->rows; i_blocked += blocksize) {
+            for (int j_blocked = 0; j_blocked < mat2->cols; j_blocked += blocksize) {
+                for (int k_blocked = 0; k_blocked < mat2->rows; k_blocked += blocksize) {
+                    for (int i = i_blocked; i < (i_blocked + blocksize) && i < mat1->rows; i++) { 
+                        for (int j = j_blocked; j < j_blocked + blocksize && j < mat2->cols / 16 * 16; j += 16) {
+                            __m256d c0 = _mm256_loadu_pd(data + (i * mat2->cols) + j);
+                            __m256d c1 = _mm256_loadu_pd(data + (i * mat2->cols) + j + 4);
+                            __m256d c2 = _mm256_loadu_pd(data + (i * mat2->cols) + j + 8);
+                            __m256d c3 = _mm256_loadu_pd(data + (i * mat2->cols) + j + 12);
+
+                            for (int k = k_blocked; k < k_blocked + blocksize && k < mat2->rows; k++) {                                
+                                c0 = _mm256_fmadd_pd(_mm256_broadcast_sd(mat1->data[i] + k), _mm256_loadu_pd(mat2->data[k] + j), c0);
+                                c1 = _mm256_fmadd_pd(_mm256_broadcast_sd(mat1->data[i] + k), _mm256_loadu_pd(mat2->data[k] + j + 4), c1);
+                                c2 = _mm256_fmadd_pd(_mm256_broadcast_sd(mat1->data[i] + k), _mm256_loadu_pd(mat2->data[k] + j + 8), c2);
+                                c3 = _mm256_fmadd_pd(_mm256_broadcast_sd(mat1->data[i] + k), _mm256_loadu_pd(mat2->data[k] + j + 12), c3);                         
+                            }
+                            _mm256_storeu_pd(data + (i * mat2->cols) + j, c0); 
+                            _mm256_storeu_pd(data + (i * mat2->cols) + j + 4, c1); 
+                            _mm256_storeu_pd(data + (i * mat2->cols) + j + 8, c2); 
+                            _mm256_storeu_pd(data + (i * mat2->cols) + j + 12, c3); 
+                        }
+                    }
+                }
             }
         }
 
+        #pragma omp parallel for num_threads(4)
         for (int i = 0; i < mat1->rows; i++) {
-            for (int j = 0; j < mat2->cols; j++) {
-                set(result, i, j, *(data + (i * mat2->cols) + j));
+            for (int j = mat2->cols / 16 * 16; j < mat2->cols; j++) {
+                for (int k = 0; k < mat2->rows; k++) {
+                    *(data + (i * mat2->cols) + j) += mat1->data[i][k] * mat2->data[k][j];
+                }
             }
         }
+        
+        double *result_pointer = result->data[0];
 
+        #pragma omp parallel for num_threads(4)
+        for (int i = 0; i < mat1->rows * mat2->cols / 16 * 16; i += 16) {
+            _mm256_storeu_pd(result_pointer + i, _mm256_loadu_pd(data + i));
+            _mm256_storeu_pd(result_pointer + i + 4, _mm256_loadu_pd(data + i + 4));
+            _mm256_storeu_pd(result_pointer + i + 8, _mm256_loadu_pd(data + i + 8));
+            _mm256_storeu_pd(result_pointer + i + 12, _mm256_loadu_pd(data + i + 12));
+        }
+        #pragma omp parallel for num_threads(4)
+        for (int i = mat1->rows * mat2->cols / 16 * 16; i < mat1->rows * mat2->cols; i++) {
+            *(result_pointer + i) = *(data + i);
+        }
         free(data);
-
         return 0;
     }
     return -1;
@@ -297,7 +405,6 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
 int pow_matrix(matrix *result, matrix *mat, int pow) {
     /* TODO: YOUR CODE HERE */
     // Divide and conquer algorithm inspired from https://www.hackerearth.com/practice/notes/matrix-exponentiation-1/ 
-    
     if (pow < 0) {
         //ValueError if a is not a square matrix or if pow is negative.
         PyErr_SetString(PyExc_ValueError, "Power is negative!");
@@ -307,33 +414,58 @@ int pow_matrix(matrix *result, matrix *mat, int pow) {
         return -1;
     } else {
         //Make a copy of matrix
+        //Temps needed to be made in order to prevent writing over existing matrices.
         matrix *ret = NULL;
         allocate_matrix(&ret, mat->rows, mat->cols);
-        
+        #pragma omp parallel for num_threads(4)
         for (int i = 0; i < result->rows; i++) {
             set(ret, i, i, 1);
         }
          
-        while (pow > 0) {
-            mul_matrix(ret, ret, mat);
-            pow--;
+        //Deep copy matrix data
+        matrix *A = NULL;
+        allocate_matrix(&A, mat->rows, mat->cols);
+
+        double *A_pointer = A->data[0];
+        double *mat_pointer = mat->data[0];
+
+        #pragma omp parallel for num_threads(4)
+        for (int i = 0; i < result->rows * result->cols / 16 * 16; i += 16) {
+            _mm256_storeu_pd(A_pointer + i, _mm256_loadu_pd(mat_pointer + i));
+            _mm256_storeu_pd(A_pointer + i + 4, _mm256_loadu_pd(mat_pointer + i + 4));
+            _mm256_storeu_pd(A_pointer + i + 8, _mm256_loadu_pd(mat_pointer + i + 8));
+            _mm256_storeu_pd(A_pointer + i + 12, _mm256_loadu_pd(mat_pointer + i + 12));
+        }
+        #pragma omp parallel for num_threads(4)
+        for (int i = result->rows * result->cols / 16 * 16; i < result->rows * result->cols; i++) {
+            *(A_pointer + i) = *(mat_pointer + i);
         }
 
-        for (int i = 0; i < result->rows; i++) {
-            for (int j = 0; j < result->cols; j++) {
-                set(result, i, j, get(ret, i, j));
-            }
-        }
-        
-        /* 
         while (pow > 0) {
             if (pow & 1) {
-                mul_matrix(result, result, mat);
+                mul_matrix(ret, ret, A);
             } 
-            mul_matrix(mat, mat, mat);
+            mul_matrix(A, A, A);
             pow = pow / 2;
         }
-        */
+
+        double *result_pointer = result->data[0];
+        double *ret_pointer = ret->data[0];
+
+        #pragma omp parallel for num_threads(4)
+        for (int i = 0; i < result->rows * result->cols / 16 * 16; i += 16) {
+            _mm256_storeu_pd(result_pointer + i, _mm256_loadu_pd(ret_pointer + i));
+            _mm256_storeu_pd(result_pointer + i + 4, _mm256_loadu_pd(ret_pointer + i + 4));
+            _mm256_storeu_pd(result_pointer + i + 8, _mm256_loadu_pd(ret_pointer + i + 8));
+            _mm256_storeu_pd(result_pointer + i + 12, _mm256_loadu_pd(ret_pointer + i + 12));
+        }
+        #pragma omp parallel for num_threads(4)
+        for (int i = result->rows * result->cols / 16 * 16; i < result->rows * result->cols; i++) {
+            *(result_pointer + i) = *(ret_pointer + i);
+        }
+
+        deallocate_matrix(ret);
+        deallocate_matrix(A);
         
         return 0;
     }
@@ -345,14 +477,34 @@ int pow_matrix(matrix *result, matrix *mat, int pow) {
  */
 int neg_matrix(matrix *result, matrix *mat) {
     if ((result->rows == mat->rows) && (result->cols == mat->cols)) {
-        for (int i = 0; i < mat->rows; i++) {
-            for (int j = 0; j < mat->cols; j++) {
-                result->data[i][j] = (-1.0) * mat->data[i][j];
+        if (mat->rows < 16 || mat->cols < 16 || mat->parent != NULL) {
+            for (int i = 0; i < mat->rows; i++) {
+                for (int j = 0; j < mat->cols; j++) {
+                    result->data[i][j] = (-1.0) * mat->data[i][j];
+                }
             }
+            return 0;
+        }
+
+        __m256d zero_vector = _mm256_set1_pd(0.0);
+        double *res_pointer = result->data[0];
+        double *mat_pointer = mat->data[0];
+
+        #pragma omp parallel for num_threads(4)
+        for (int i = 0; i < mat->rows * mat->cols / 16 * 16; i += 16) { 
+            _mm256_storeu_pd(res_pointer + i, _mm256_sub_pd(zero_vector, _mm256_loadu_pd(mat_pointer + i)));
+            _mm256_storeu_pd(res_pointer + i + 4, _mm256_sub_pd(zero_vector, _mm256_loadu_pd(mat_pointer + i + 4)));
+            _mm256_storeu_pd(res_pointer + i + 8, _mm256_sub_pd(zero_vector, _mm256_loadu_pd(mat_pointer + i + 8)));
+            _mm256_storeu_pd(res_pointer + i + 12, _mm256_sub_pd(zero_vector, _mm256_loadu_pd(mat_pointer + i + 12)));
+        }   
+    
+        //Tail Case
+        #pragma omp parallel for num_threads(4)
+        for (int i = mat->rows * mat->cols / 16 * 16; i < mat->rows * mat->cols; i++) {  
+            *(res_pointer + i) = (-1.0) * *(mat_pointer + i);  
         }
         return 0;
     }
-    PyErr_SetString(PyExc_RuntimeError, "Invalid dimensions");
     return 1;
 }
 
@@ -363,13 +515,34 @@ int neg_matrix(matrix *result, matrix *mat) {
 int abs_matrix(matrix *result, matrix *mat) {
     /* TODO: YOUR CODE HERE */
     if ((result->rows == mat->rows) && (result->cols == mat->cols)) {
-        for (int i = 0; i < mat->rows; i++) {
-            for (int j = 0; j < mat->cols; j++) { 
-                result->data[i][j] = fabs(mat->data[i][j]);
+        if (mat->rows < 16 || mat->cols < 16 || mat->parent != NULL) {
+            for (int i = 0; i < mat->rows; i++) {
+                for (int j = 0; j < mat->cols; j++) {
+                    result->data[i][j] = fabs(mat->data[i][j]);
+                }
             }
+            return 0;
+        }
+
+        __m256d zero_vector = _mm256_set1_pd(0.0);
+        double *res_pointer = result->data[0];
+        double *mat_pointer = mat->data[0];
+        
+        #pragma omp parallel for num_threads(4)
+        for (int i = 0; i < mat->rows * mat->cols / 16 * 16; i += 16) { 
+            _mm256_storeu_pd(res_pointer + i, _mm256_max_pd(_mm256_sub_pd(zero_vector, _mm256_loadu_pd(mat_pointer + i)), _mm256_loadu_pd(mat_pointer + i)));
+            _mm256_storeu_pd(res_pointer + i + 4, _mm256_max_pd(_mm256_sub_pd(zero_vector, _mm256_loadu_pd(mat_pointer + i + 4)), _mm256_loadu_pd(mat_pointer + i + 4)));
+            _mm256_storeu_pd(res_pointer + i + 8, _mm256_max_pd(_mm256_sub_pd(zero_vector, _mm256_loadu_pd(mat_pointer + i + 8)), _mm256_loadu_pd(mat_pointer + i + 8)));
+            _mm256_storeu_pd(res_pointer + i + 12, _mm256_max_pd(_mm256_sub_pd(zero_vector, _mm256_loadu_pd(mat_pointer + i + 12)), _mm256_loadu_pd(mat_pointer + i + 12)));
+        }
+        
+        //Tail Case
+        #pragma omp parallel for num_threads(4)
+        for (int i = mat->rows * mat->cols / 16 * 16; i < mat->rows * mat->cols; i++) {  
+            *(res_pointer + i) = fabs(*(mat_pointer + i));
         }
         return 0;
     }
-    PyErr_SetString(PyExc_TypeError, "Invalid dimensions");
+
     return -1;
 }

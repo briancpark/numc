@@ -5,17 +5,18 @@ Here's what I did in project 4:
 -
 
 ## Task 1
-Implemented various functions. There were some conceptual challenges in understanding how slicing works, but turns out they're really represented as linked list of matrix structs and shifting memory pointers by offsets. Matrix operations were actually pretty straightfoward, and *much* easier compared to the matrix operations we had to implement in RISC-V assembly for project 2. Optimizations will be later applied once we learn parallelism!
+Implemented various functions. There were some conceptual challenges in understanding how slicing works, but turns out they're really represented as linked lists/trees of matrix structs. So all we needed to do was shift memory pointers by offsets. Naive matrix operations were actually pretty straightfoward, and *much* easier compared to the matrix operations we had to implement in RISC-V assembly for project 2. Optimizations were applied later once we learn parallelism!
 
 ### `int allocate_matrix(matrix **mat, int rows, int cols)`
-The very first function we implemented. In order to understand this and the spec inside and out, we took the time to carefully implement everything before moving on to other function. An important design choice was to use a double pointer array to properly address and call on 2D matrices. It makes sense to do so, and made slicing implementation much more intuitive and less of a hassle.
+The very first function we implemented. In order to understand this and the spec inside and out, we took the time to carefully implement everything before moving on to other function. An important design choice was to use a double pointer array to properly address and call on 2D matrices. It makes sense to do so, and made slicing implementation much more intuitive and less of a hassle. Later we optimized this in Task 4.
+
 ### `int allocate_matrix_ref(matrix **mat, matrix *from, int row_offset, int col_offset, int rows, int cols)`
 Understanding `allocate_matrix()` allowed us to proceed further to this function. It turns out this was related to slicing. We had to come back later and fix bugs related to pointers. For the longest time, Brian was stuck up on how to shift pointers around and weird bugs would happen. After Brian rigorously debugged in `cgdb`, he found the pointers could be elegantly be shifted with:
 ```c
 (*mat)->data[i] = from->data[i + row_offset] + col_offset;
 ```
 ### `void deallocate_matrix(matrix *mat)`
-A bit complicated as we had to deal with how to alocate parents and child matrices, but soon realized it was really just linked list/tree data structure. We just have to recursively check on parent/child matrices if they are referenced or need to be free'd.
+A bit complicated as we had to deal with how to allocate parents and child matrices, but soon realized it was really just linked list/tree data structure. We just have to recursively check on parent/child matrices if they are referenced or need to be `free()`'d.
 ### `double get(matrix *mat, int row, int col)`
 Just a clean one liner.
 ### `void set(matrix *mat, int row, int col, double val)`
@@ -27,7 +28,7 @@ Also very simple for the naive solution. Will be explained how it was sped up in
 ### `int sub_matrix(matrix *result, matrix *mat1, matrix *mat2)`
 Also very simple for the naive solution. Will be explained how it was sped up in Task 4.
 ### `int mul_matrix(matrix *result, matrix *mat1, matrix *mat2)`
-Naive solution was a bit trick to implement, as we realized that trying to multiply a matrix by itself would scribble data from the original matrix and overwrite it. Thus, we had to allocate another temporary array during matrix operation.
+Naive solution was a bit tricky to implement, as we realized that trying to multiply a matrix by itself would scribble data from the original matrix and overwrite it. Thus, we had to allocate another temporary array during matrix operation.
 ### `int pow_matrix(matrix *result, matrix *mat, int pow)`
 Naive solution used just a for loop of `mul_matrix()`.
 ### `int neg_matrix(matrix *result, matrix *mat)`
@@ -35,30 +36,31 @@ Very simple, just multiply by -1 for each entry.
 ### `int abs_matrix(matrix *result, matrix *mat)`
 Also very simple, but encountered a bug where the C standard `abs()` function would return an int. This was simply changed to `fabs()` (for floating point absolute value) and our bug was fixed!
 
-
 ## Task 2
-Pretty simple, and straightforward. Skimming through the Python3 doc helped us solve the problem. Now our Python can communicate with out C code and vice versa! Woohoo!
+Pretty simple, and straightforward. Skimming through the [`Python3` doc](https://docs.python.org/3.6/distutils/apiref.html) helped us solve the problem. Now our Python can communicate with out C code and vice versa! Woohoo!
 
 ## Task 3
-For this task, a lot of the functions were very simple after truly understanding the python docs. The Python docs were confusing to read at first, but rewarding when we slowly caught up with it and make things work! 
+For this task, a lot of the functions were very simple after truly understanding the `Python` docs. The `Python` docs were confusing to read at first, but rewarding when we slowly caught up with it and make things work! 
 
 Hardest part were slicing, just due to the sheer complexity and *MANY* different errors we needed to handle. 
 
-We also kept failing `set()` for the most minor and funniest reason. Brian kept improving on slicing functionality, thinking that the autograder's set correctness test robustly tested on it. But turns our it was resolved in OH when Brian realized that set didn't have to be invoked through slicing. It could be invoked through `set(self, i, j, val)` in Python. The bug was just a simple error handling between `if (!PyLong_Check(val) || !PyFloat_Check(val))` to `if (!PyLong_Check(val) && !PyFloat_Check(val))` Even though time debugging it was fustrating, at least Brian made sure many slicing errors were handled and properly working. 
+We also kept failing `set()` for the most minor and funniest reason. Brian kept improving on slicing functionality, thinking that the autograder's set correctness test robustly tested on it. But turns our it was resolved in OH when Brian realized that `set()` didn't have to be invoked through slicing. It could be invoked through `set(self, i, j, val)` in `Python`. The bug was just a simple error handling between `if (!PyLong_Check(val) || !PyFloat_Check(val))` to `if (!PyLong_Check(val) && !PyFloat_Check(val))` Even though time debugging it was fustrating, at least Brian made sure many slicing errors were handled and properly working. 
 
 ### Testing
-After the core parts of Task 3 was implemented, we could finally move on to testing our `numc` library and ensure that it works correctly. The Python `unittest` framework can be abused through tactical testing and Brian added fuzz, scaling and fuzz repetition global parameters to scale up the testing when needed. Parameters were catiously set and tuned as Brian almost crashed an entire Hive server for running large tests. 
+After the core parts of Task 3 was implemented, we could finally move on to testing our `numc` library and ensure that it works correctly. The Python `unittest` framework can be abused through tactical testing and Brian added fuzz, scaling, and fuzz repetition global parameters to scale up the testing when needed. Parameters were catiously set and tuned as Brian almost crashed an entire Hive server for running large tests. Brian also crashed a server for not realizing there was a memory leak in `allocate_matrix()` and the server would hit 32GB of RAM and then die.
 
 For efficient TDD workflow, Brian made a simple bash script to compile and run all tests under the executable 
 ```
 ./skiddie.sh
 ```
-It will do everything in one line, (load Python environment, clean, compile, and run unittests) because well... Brian is lazy and a script kiddie.
+It will do everything in one line, (load `Python` environment, clean, compile, and run `unittests`) because well... Brian is lazy and a script kiddie.
 
 ## Task 4
-
+Here begins the important chunk of the project, performing these operations faster. These operations are *embarassingly parallel*, so let's abuse it! We got the hardware, so let's write the software!
 ### Simple (Addition, Subtraction, Negation, Absolute)
-Began first by trying to improve the performance of add. Once we knew how to accelerate add, the others could follow the same structure. The buildup to achieve 5X perfomance is shown through our acceleration of the `add_matrix()` function.
+Began first by trying to improve the performance of add. Once we knew how to accelerate add, the other simple operations could follow the same structure. 
+
+*The buildup to achieve 5X perfomance is explained through our acceleration of the `add_matrix()` function.*
 
 #### The Naive Solution
 First, we began with the naive solution, and turns out it performs about the same as `dumbpy` as expected. 
@@ -97,7 +99,7 @@ for (int i = 0; i < rows; i++) {
 ```
 
 #### Speed it up with SIMD
-Time to start speeding it up even more! We applied SIMD with [Intel Intrinsics](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#techs=SSE,SSE2,SSE3,SSSE3,SSE4_1,SSE4_2&expand=2184,2183,2177,3980,5999,6006,3594,5392,956). [Linked here](https://ark.intel.com/content/www/us/en/ark/products/75122/intel-core-i7-4770-processor-8m-cache-up-to-3-90-ghz.html) is the specs of the [Hive machines](https://www.ocf.berkeley.edu/~hkn/hivemind/). Vectorization provided near 3X speedup compared to `dumbpy`. We took the hints provided in the specs on which intrinsics should be used very well. We mainly used 256 bit vector operations as those were the maximum data provided by the Hive's Intel i7 4th generation processors. We also unrolled the loops for just the minimal speed up, although we are not sure if that actually makes a difference since the compiler could actually unroll it, but did it to just stay safe!
+Time to start speeding it up even more! We applied SIMD with [Intel Intrinsics](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#techs=SSE,SSE2,SSE3,SSSE3,SSE4_1,SSE4_2&expand=2184,2183,2177,3980,5999,6006,3594,5392,956). [Linked here](https://ark.intel.com/content/www/us/en/ark/products/75122/intel-core-i7-4770-processor-8m-cache-up-to-3-90-ghz.html) is the specs of the [Hive machines](https://www.ocf.berkeley.edu/~hkn/hivemind/). Vectorization provided near 3X speedup compared to `dumbpy`. We used the hints provided in the spec on which intrinsics should be used. We mainly used 256 bit vector operations as those were the maximum data provided by the Hive's Intel i7 4th generation processors. We also unrolled the loops for a minimal speed up, although we are not sure if that actually makes a difference. We weren't sure if the compiler actually automatically unrolls it, but did it to just stay safe!
 
 ```c
 double *res_pointer = result->data[0];
@@ -161,10 +163,11 @@ We could certainly optimize it a bit more efficiently by carefully thinking abou
 This was mainly the hardest part of the project. Although we thought we have mastered matrix multiplication by doing it in RISC-V for project 2, it is even harder trying to parallelize it. There are things you need to consider such as how memory is meticuously handled. We will explain our troubles and difficulty spent debugging through the buildup of how matrix multiplication was sped up. Brian did a *LOT* of research on DGEMM papers. DGEMM stands for **D**ouble-precision, **GE**neral **M**atrix-**M**atrix multiplication. Resources include [Patterson and Hennesy's Computer Organization and Design](https://www.amazon.com/Computer-Organization-Design-RISC-V-Architecture/dp/0128122757), [Nicholas Weaver's 61C - Lecture 18 Spring 2019](https://www.youtube.com/watch?v=ibzkJAkn2_o) [slides](https://inst.eecs.berkeley.edu/~cs61c/sp19/lectures/lec18.pdf), [What Every Programmer Should Know About Memory by Ulrich Drepper](https://akkadia.org/drepper/cpumemory.pdf), and [Matrix Multiplication using SIMD](https://www.youtube.com/watch?v=3rU6BX7w8Tk&list=PLKT8ER2pEV3umVSMwd06LY_eSIX-DnU6A&index=1).
 
 #### The Naive Solution
-Very simple. After project 2, this code is very simple
+Very simple. After project 2, this was really not a challenge at all.
 
-Just note that a copy of the matrix is made with `*data`. This is necessary in order to prevent memory overwrite when doing operations like `pow_matrix()`, which you will see later that it writes over `mat1->data` and `mat2->data`. (e.g.) Something in `python3` like this can make things problematic.
+Just note that a copy of the matrix is made with `*data`. This is necessary in order to prevent memory overwrite when doing operations like `pow_matrix()`, which you will see later that it writes over `mat1->data` and `mat2->data`. 
 
+*(e.g.) Something in `python3` like this snippet of code can make things problematic:*
 ```python3
 nc_mat1 = nc_mat1 * nc_mat2
 ```
@@ -216,7 +219,7 @@ for (int i = 0; i < mat1->rows; i++) {
 ```
 
 #### Cache Blocking
-We can do even better with the naive implementation by introducing cache blocking. Looking at the 4th generation i7 architecture, it has a 32K instruction and data cache. So we used that to our advantage and cache blocked the operations for better cache performance, causing less misses. This was inspired heavily from the Patterson and Hennessy implemenation, but other research papers call this cache tiling. This was the first improvement we started out with, and we acheived a near 7X speedup alone with the naive implementation:
+We can do even better with the naive implementation by introducing cache blocking. Looking at the 4th generation i7 architecture, it has a 32K instruction and data cache. So we used that to our advantage and cache blocked the operations for better cache performance, causing less misses, more hits. This was inspired heavily from the Patterson and Hennessy implemenation, but other research papers call this cache tiling. This was the first improvement we started out with, and we acheived a near 7X speedup alone with the naive implementation:
 
 ```c
 int blocksize = 32;
@@ -277,7 +280,7 @@ for (int i = 0; i < mat1->rows; i++) {
 ```
 
 #### Failed Idea (Matrix Transpose)
-This was one of our first drafts with matrix multiplication, and we though transforming the matrix would work, as the dot products can be efficiently organized and multiplied. But this only gave us a 45X speedup. It was probably due to a bottleneck of trying to transpose and copy the matrix down, not pulling down the amortized runtime. Also there are too many stores going on, so eventually we had to scrap this early on. Fortunately, we started the project early and were able to come up with the 120X solution shown above. 
+This was one of our first drafts with matrix multiplication improvements, and we thought transforming the matrix would work, as the dot products can be efficiently organized and multiplied. But this only gave us a 45X speedup. It was probably due to a bottleneck of trying to transpose and copy the matrix down, not pulling down the amortized runtime. Also there are too many `_mm256_storeu_pd` going on, which can hurt performance. So eventually we had to scrap this early on. Fortunately, we started the project early and were able to come up with the 120X solution shown above.
 
 ```c
 double *b_t_rows = (double*) calloc(mat2->rows * mat2->cols, sizeof(double));
@@ -324,17 +327,13 @@ if (mat1->rows < blocksize || mat1->cols < blocksize || mat2->rows < blocksize |
     return 0;
 }
 
-//jki
 #pragma omp parallel for num_threads(4)
 for (int j_blocked = 0; j_blocked < mat2->cols; j_blocked += blocksize) {
     for (int k_blocked = 0; k_blocked < mat2->rows; k_blocked += blocksize) {
-        for (int i_blocked = 0; i_blocked < mat1->rows; i_blocked += blocksize) {
-        
-        
+        for (int i_blocked = 0; i_blocked < mat1->rows; i_blocked += blocksize) {        
             for (int k = k_blocked; k < k_blocked + blocksize && k < mat2->rows / 16 * 16; k += 16) {                                
                 for (int j = j_blocked; j < j_blocked + blocksize && j < mat2->cols; j++) {
                     for (int i = i_blocked; i < (i_blocked + blocksize) && i < mat1->rows; i++) {
-                    
                         double sum1[4];
                         _mm256_storeu_pd(sum1, _mm256_mul_pd(_mm256_loadu_pd(mat1->data[i] + k), _mm256_loadu_pd(b_transpose[j] + k)));
                         *(data + (i * mat2->cols) + j) += (sum1[0] + sum1[1] + sum1[2] + sum1[3]);
@@ -364,17 +363,16 @@ for (int i = 0; i < mat1->rows; i++) {
 }
 free(b_transpose[0]);
 free(b_transpose);
-        
 ```
 
 #### Infeasible Ideas (Strassen's)
-We debated over this one heavily. Having taken CS 170, we thought this would be a very nice divide and conquer method, being easily parallizable and cut down on runtime. Although Strassen's performs O(n^(2.81)) compared to O(n^3), there was an issue with how Strassens work. Strassens performs poorly on smaller matrices. Also, Strassen's requires matrix dimensions to be a power of 2 with it being square. This is possible to do by zero padding matrices, but we also lose performance if the matrix is not relatively square or we're doing matrix-vector multiplication. We could be working with very sparse matrices if the dimensions are unaligned. `allocate_matrix()` would need to be tuned to zero pad matrices, potentially messing with the functionality of other matrix operations. Cache blocking and SIMD would be operated on data with `0.0` if it's zero padded, so it sounds like a bad algorithm to implement. 
+We debated over this one heavily. Having taken CS 170, we thought this would be a very nice divide and conquer method, being easily parallizable and cut down on runtime. Although Strassen's performs O(n^(2.81)) compared to O(n^3), there was an issue with how Strassens work. Strassens performs poorly on smaller matrices. Also, Strassen's requires matrix dimensions to be a power of 2 with it being square. This is possible to do by zero padding matrices, but we also lose performance if the matrix is not relatively square or we're doing matrix-vector multiplication. We could be working with very sparse matrices if the dimensions are unaligned. `allocate_matrix()` would need to be tuned to zero pad matrices, potentially messing with the functionality of other matrix operations. Cache blocking and SIMD would be operated on data with `0.0` if it's zero padded, so it sounds like a bad algorithm to implement. We'd be wasting a lot of computation on zero vectors on sparse matrices. Thus, the improvement from O(n^3) to O(n^(2.81)) was not worth it due to the input limitations of Strassen's.
 
 #### Can We Do Even Better (Conclusion)
 
 
 ### Power
-Used a simple divide and conquer method.
+Used a simple divide and conquer method noted [here](https://www.hackerearth.com/practice/notes/matrix-exponentiation-1/). The way matrices are powered in this once cuts down coputation by an order of O(log(n))!
 
 ### About the Hive CPUs
 Will be useful in determining optimization choices and constraints.
@@ -389,4 +387,8 @@ Will be useful in determining optimization choices and constraints.
 | L2 | 256K |
 | L3 | 8192K |
 
+## Acknowledgements
 TAs/Tutors who helped us: Kunal Dutta, Luke Mujica, Jie Qiu, Cynthia Zhong, Kevin Lafeur, Dayeol Lee
+
+##
+*“People who are really serious about software should make their own hardware.”* --Alan Kay

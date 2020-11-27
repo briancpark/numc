@@ -185,6 +185,9 @@ for (int i = 0; i < mat1->rows; i++) {
 }
 ```
 
+Before we move on, we must first observe why matrix multiplication is such a complex operation to optimize. We see that we keep hitting strides of the matrix b at the innermost for loop, we have to mitigate this or else, we miss a lot of cache hits.
+![matmul](https://www.mymathtables.com/calculator/matrix/3x3-matrix-formula.png)
+
 #### SIMD
 Again, Intel Intrinsics saves the day with subword parallelism. Fortunately, Patterson and Henessy paints the picture very elegantly in their textbook, as their newest edition includes a buildup of how to improve DGEMM performance with SIMD, cache blocking, and multithreaded parallelism. Unfortunately, the Patterson and Hennessy implementation does not work out of the box, because they only did it for square matrices with dimension of `2^n`, so a tail case needed to be implemented as well. Here is how that looks like with a few more optimizations like loop unrolling as well:
 

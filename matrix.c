@@ -322,6 +322,7 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
             return 1;
         }
         
+        double *result_pointer = result->data[0];
         int blocksize = 32;
 
         if (mat1->rows < blocksize || mat1->cols < blocksize || mat2->rows < blocksize || mat2->cols < blocksize || mat1->parent != NULL || mat2->parent != NULL) {
@@ -333,29 +334,20 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
                     }
                 }
             }
-
-            #pragma omp parallel for num_threads(4)
-            for (int i = 0; i < mat1->rows * mat2->cols; i++) {
-                *(result->data[0] + i) = *(data + i);                
-            }
+            memcpy(result_pointer, data, result->rows * result->cols * sizeof(double));
             return 0;
         }
 
-        __m256d c0;
-        __m256d c1;
-        __m256d c2;
-        __m256d c3;
-
-        #pragma omp parallel for private(c0, c1, c2, c3) num_threads(4)
+        #pragma omp parallel for num_threads(4)
         for (int i_blocked = 0; i_blocked < mat1->rows; i_blocked += blocksize) {
             for (int j_blocked = 0; j_blocked < mat2->cols; j_blocked += blocksize) {
                 for (int k_blocked = 0; k_blocked < mat2->rows; k_blocked += blocksize) {
                     for (int i = i_blocked; i < (i_blocked + blocksize) && i < mat1->rows; i++) { 
                         for (int j = j_blocked; j < j_blocked + blocksize && j < mat2->cols / 16 * 16; j += 16) {
-                            c0 = _mm256_loadu_pd(data + (i * mat2->cols) + j);
-                            c1 = _mm256_loadu_pd(data + (i * mat2->cols) + j + 4);
-                            c2 = _mm256_loadu_pd(data + (i * mat2->cols) + j + 8);
-                            c3 = _mm256_loadu_pd(data + (i * mat2->cols) + j + 12);
+                            __m256d c0 = _mm256_loadu_pd(data + (i * mat2->cols) + j);
+                            __m256d c1 = _mm256_loadu_pd(data + (i * mat2->cols) + j + 4);
+                            __m256d c2 = _mm256_loadu_pd(data + (i * mat2->cols) + j + 8);
+                            __m256d c3 = _mm256_loadu_pd(data + (i * mat2->cols) + j + 12);
 
                             for (int k = k_blocked; k < k_blocked + blocksize && k < mat2->rows; k++) {                           
                                 c0 = _mm256_fmadd_pd(_mm256_broadcast_sd(mat1->data[i] + k), _mm256_loadu_pd(mat2->data[k] + j), c0);
@@ -397,7 +389,7 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
             *(result_pointer + i) = *(data + i);
         }
         */
-        memcpy(result->data[0], data, result->rows * result->cols * sizeof(double));
+        memcpy(result_pointer, data, result->rows * result->cols * sizeof(double));
         free(data);
         return 0;
     }

@@ -394,7 +394,25 @@ We debated over this one heavily. Having taken CS 170, we thought this would be 
 
 
 ### Power
-Used a simple divide and conquer method noted [here](https://www.hackerearth.com/practice/notes/matrix-exponentiation-1/). The way matrices are powered in this once cuts down coputation by an order of O(log(n))!
+Used a simple divide and conquer method noted [here](https://www.hackerearth.com/practice/notes/matrix-exponentiation-1/). The way matrices are powered in this once cuts down coputation by an order of O(log(n)) relative to matrix multiplication. The actual runtime would be O(n^3log(n)), but because parallelism was applied, it's a bit weird to do formal runtime analyis.
+
+#### Matrix Exponentation
+Here is how it's done! Basically we and save computation on an order of log(n) by repeatedly squaring A. 
+
+*e.g. A^5 = ((A^2)^2)A*
+
+This in total gives us over 2000X performance!
+
+#### Matrix Decomposition (Draft)
+We can definitely do better. The total runtime of O(n^3log(n)) can be done better, but in tricky cases with high manipulation. We can try to exploit linear algebra by using [spectral decomposition](https://en.wikipedia.org/wiki/Eigendecomposition_of_a_matrix). Basically, a matrix A can be decomposed into A = VDV^-1. Although the computation to get the eigenvalues and eigenvector to compose V, D, and V^-1, it should not even matter in terms of amortized cost and perfomance. Because now you can use regular matrix multiplication to compute A^n. Why? 
+
+A^n = V * D * V^-1 * V * D * V^-1 * ... * V * D * V^-1 (decomposition is multiplied n times)
+A^n = V * D^n * V^-1 (exploit the fact that V^-1 * V = I)
+
+Of course, there are certain cases to consider, cannot be defective and must be diagonalizable, so might be infeasible???.......
+
+**This idea is still in progress... write more here**
+
 
 ### About the Hive CPUs
 Will be useful in determining optimization choices and constraints.

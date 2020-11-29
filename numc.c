@@ -770,6 +770,11 @@ PyObject *Matrix61c_subscript(Matrix61c* self, PyObject* key) {
             //Row is an int type
             row_start = PyLong_AsLong(row_slice);
             row_stop = row_start + 1;
+
+            if (row_start < 0 || row_start >= self->mat->rows) {
+                PyErr_SetString(PyExc_IndexError, "Index out of range!");
+                return NULL;
+            }
         } else {
             //Throw an error here? Ask TA
             //return NULL;
@@ -790,6 +795,11 @@ PyObject *Matrix61c_subscript(Matrix61c* self, PyObject* key) {
             //Row is an int type
             col_start = PyLong_AsLong(col_slice);
             col_stop = col_start + 1;
+
+            if (col_start < 0 || col_start >= self->mat->cols) {
+                PyErr_SetString(PyExc_IndexError, "Index out of range!");
+                return NULL;
+            }
         }  else {
             //Throw an error here? Ask TA
             //return NULL;
@@ -805,7 +815,7 @@ PyObject *Matrix61c_subscript(Matrix61c* self, PyObject* key) {
             return NULL;
         }
     } else {
-        //A null case.... handle an error here later.
+        PyErr_SetString(PyExc_TypeError, "Key is not valid!");
         return NULL;
     }
 
@@ -939,7 +949,21 @@ int Matrix61c_set_subscript(Matrix61c* self, PyObject *key, PyObject *v) {
             return -1;
         }
     } else if (PyTuple_Check(key)){
-        //If it's a tuple of slices
+        /* When key is now a tuple
+         * 
+         * Combinations include:
+         * 
+         * (int, slice)
+         * (slice, int)
+         * (slice, slice)
+         * (int, int)
+         */
+
+        if (self->mat->is_1d) {
+            PyErr_SetString(PyExc_TypeError, "1D matrices only support single slice!");
+            return -1;
+        }
+
         PyObject *row_slice = NULL;
         PyObject *col_slice = NULL;
         if (!PyArg_UnpackTuple(key, "key", 2, 2, &row_slice, &col_slice)) {
@@ -962,22 +986,36 @@ int Matrix61c_set_subscript(Matrix61c* self, PyObject *key, PyObject *v) {
             if (PySlice_GetIndicesEx(row_slice, self->mat->rows, &row_start, &row_stop, &row_step, &row_slicelength)) {
                 return -1;
             }
-        } else { //PyLong_Check(row_slice) doesn't work, Ask a TA if we can inject undefined symbols a[1:?] etc.
+            //If there are steps or 0 size slice, throw ValueError
+            if (row_stop - row_start == 0 || row_step != 1) {
+                PyErr_SetString(PyExc_ValueError, "Slice info not valid!");
+                return -1;
+            }
+        } else if (PyLong_Check(row_slice)) {
             //Row is an int type
             row_start = PyLong_AsLong(row_slice);
             row_stop = row_start + 1;
-        } 
+        } else {
+
+        }
 
         if (PySlice_Check(col_slice)) {
             //Row is a slice type
             if (PySlice_GetIndicesEx(col_slice, self->mat->cols, &col_start, &col_stop, &col_step, &col_slicelength)) {
                 return -1;
             }
-        } else { //PyLong_Check(col_slice) doesn't work, Ask a TA if we can inject undefined symbols a[1:?] etc.
+            //If there are steps or 0 size slice, throw ValueError
+            if (col_stop - col_start == 0 || col_step != 1) {
+                PyErr_SetString(PyExc_ValueError, "Slice info not valid!");
+                return -1;
+            }
+        } else if (PyLong_Check(col_slice)) {
             //Row is an int type
             col_start = PyLong_AsLong(col_slice);
             col_stop = col_start + 1;
-        } 
+        } else {
+
+        }
 
         //Handle all the various slicing here!
         if (PyFloat_Check(v) || PyLong_Check(v)) {

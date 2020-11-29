@@ -8,7 +8,7 @@ Hint: use dp_mc_matrix to generate dumbpy and numc matrices with the same data a
 """
 
 ### Global variables
-fuzz = 5000
+fuzz = 3500
 fuzz_rep = 100
 scale = 4
 ### DANGEROUS CHANGE WITH CAUTION
@@ -369,8 +369,8 @@ class TestMul(TestCase):
         print()
         speeds = []
         for n in range(fuzz_rep):
-            x = np.random.randint(1, fuzz)
-            y = np.random.randint(1, fuzz)
+            x = np.random.randint(2, fuzz)
+            y = np.random.randint(2, fuzz)
             dp_mat1, nc_mat1 = rand_dp_nc_matrix(x, y, seed=0)
             dp_mat2, nc_mat2 = rand_dp_nc_matrix(y, x, seed=1)
             print(nc_mat1.shape)
@@ -487,34 +487,6 @@ class TestGet(TestCase):
         del dp_mat
         del nc_mat
 
-    def test_slice_spec1_get(self):
-        a = nc.Matrix(3, 3)
-        b = dp.Matrix(3, 3)
-        self.assertEqual(a[0], b[0])
-        self.assertEqual(a[0:2, 0:2], b[0:2, 0:2])
-        self.assertEqual(a[0:2, 0], b[0:2, 0])  
-        self.assertEqual(a[0, 0], b[0, 0])
-
-        a = nc.Matrix(1, 3)
-        b = dp.Matrix(1, 3)
-        self.assertEqual(a[0], b[0])
-        self.assertEqual(a[0:2], b[0:2])
-        with self.assertRaises(TypeError):
-            a[0:1, 0:1]
-
-    def test_slice_spec2_get(self):
-        a = nc.Matrix(3, 3)
-        b = dp.Matrix(3, 3)
-        self.assertEqual(a[0][1], b[0][1])
-        self.assertEqual(a[0:1, 0:1], b[0:1, 0:1])
-
-    def test_slice_spec3_get(self):
-        a = nc.Matrix(4, 4)
-        with self.assertRaises(ValueError):        
-            a[0:4:2]
-        with self.assertRaises(ValueError):
-            a[0:0]
-
     def test_basic_get(self):
         dp_mat, nc_mat = rand_dp_nc_matrix(100, 100, seed=0)
         for _ in range(1000):
@@ -531,7 +503,456 @@ class TestSet(TestCase):
         self.assertEqual(round(dp_mat[rand_row][rand_col], decimal_places),
             round(nc_mat[rand_row][rand_col], decimal_places))
 
-    def test_set_error(self):
+    def test_basic_set(self):
+        dp_mat, nc_mat = rand_dp_nc_matrix(100, 100, seed=0)
+        for i in range(1000):
+            rand_row = np.random.randint(dp_mat.shape[0])
+            rand_col = np.random.randint(dp_mat.shape[1])
+            self.assertEqual(nc_mat.set(rand_row, rand_col, i), dp_mat.set(rand_row, rand_col, i))
+
+        self.assertEqual(dp_mat, nc_mat)
+
+    def test_init_set(self):
+        #There is a heisenbug here, but dumbpy also segfaults if iterated too much?
+        x = np.random.randint(2, 100)
+        y = np.random.randint(2, 100)
+        val = np.random.random_sample()
+
+        dp_mat = dp.Matrix(x, y)
+        nc_mat = nc.Matrix(x, y)
+        self.assertEqual(nc_mat, dp_mat)
+        del dp_mat
+        del nc_mat
+
+        dp_mat1 = dp.Matrix(y, x, val)
+        nc_mat1 = nc.Matrix(y, x, val)
+        self.assertEqual(nc_mat1, dp_mat1)
+        del dp_mat1
+        del nc_mat1
+
+        val_matrix = []
+
+        for i in range(x):
+            for j in range(y):
+                val_matrix.append(1)                 
+        
+        dp_mat2 = dp.Matrix(x, y, val_matrix)
+        nc_mat2 = nc.Matrix(x, y, val_matrix)
+        self.assertEqual(nc_mat2, dp_mat2)
+        del dp_mat2
+        del nc_mat2
+
+        del val_matrix
+        
+        val_matrix1 = []
+
+        for i in range(x):
+            val_row = []
+            for j in range(y):
+                val_row.append(1)
+            val_matrix1.append(val_row)
+
+        dp_mat3 = dp.Matrix(val_matrix1)
+        nc_mat3 = nc.Matrix(val_matrix1)
+        self.assertEqual(nc_mat3, dp_mat3)
+        del dp_mat3
+        del nc_mat3
+
+        del val_matrix1
+
+class TestSlice(TestCase):
+    def test_spec1_slice(self):
+        a = nc.Matrix(3, 3)
+        b = dp.Matrix(3, 3)
+        self.assertEqual(a[0], b[0])
+        self.assertEqual(a[0:2, 0:2], b[0:2, 0:2])
+        self.assertEqual(a[0:2, 0], b[0:2, 0])  
+        self.assertEqual(a[0, 0], b[0, 0])
+
+        a = nc.Matrix(1, 3)
+        b = dp.Matrix(1, 3)
+        self.assertEqual(a[0], b[0])
+        self.assertEqual(a[0:2], b[0:2])
+        with self.assertRaises(TypeError):
+            a[0:1, 0:1]
+        with self.assertRaises(TypeError):
+            b[0:1, 0:1]
+
+    def test_spec2_slice(self):
+        a = nc.Matrix(3, 3)
+        b = dp.Matrix(3, 3)
+        self.assertEqual(a[0][1], b[0][1])
+        self.assertEqual(a[0:1, 0:1], b[0:1, 0:1])
+
+    def test_spec3_slice(self):
+        a = nc.Matrix(4, 4)
+        b = dp.Matrix(4, 4)
+        with self.assertRaises(ValueError):        
+            a[0:4:2]
+        with self.assertRaises(ValueError):        
+            b[0:4:2]
+        with self.assertRaises(ValueError):
+            a[0:0]
+        with self.assertRaises(ValueError):
+            b[0:0]
+
+    def test_error_1d_edge_slice(self):
+        dp_mat, nc_mat = rand_dp_nc_matrix(10, 1, seed=0)
+        with self.assertRaises(ValueError):
+            dp_mat[1:1]
+        with self.assertRaises(ValueError):
+            nc_mat[1:1]
+        with self.assertRaises(ValueError):
+            dp_mat[-2:-2]
+        with self.assertRaises(ValueError):
+            nc_mat[-2:-2]
+        del dp_mat
+        del nc_mat
+
+        dp_mat, nc_mat = rand_dp_nc_matrix(1, 10, seed=0)
+        with self.assertRaises(ValueError):
+            dp_mat[1:1]
+        with self.assertRaises(ValueError):
+            nc_mat[1:1]
+        with self.assertRaises(ValueError):
+            dp_mat[-2:-2]
+        with self.assertRaises(ValueError):
+            nc_mat[-2:-2]
+        del dp_mat
+        del nc_mat
+        
+    def test_piazza_clarification_slice(self):
+        dp_mat, nc_mat = rand_dp_nc_matrix(10, 10, seed=0)
+        #int, slice, (int, slice), (slice, int), (slice, slice), or (int, int)
+        #Slice is: int
+        self.assertEqual(dp_mat[1], nc_mat[1])
+        self.assertEqual(dp_mat, nc_mat)
+        #Slice is: slice
+        self.assertEqual(dp_mat[:], nc_mat[:])
+        self.assertEqual(dp_mat[2:4], nc_mat[2:4])
+        self.assertEqual(dp_mat, nc_mat)
+        #Slice is: (int, slice)
+        self.assertEqual(dp_mat[1, :], nc_mat[1, :])
+        self.assertEqual(dp_mat[2, :], nc_mat[2, :])
+        self.assertEqual(dp_mat[2, 2:4], nc_mat[2, 2:4])
+        self.assertEqual(dp_mat, nc_mat)
+        #Slice is: (slice, int)
+        self.assertEqual(dp_mat[:, 2], nc_mat[:, 2])
+        self.assertEqual(dp_mat[:, 1], nc_mat[:, 1])
+        self.assertEqual(dp_mat[2:4, 2], nc_mat[2:4, 2])
+        self.assertEqual(dp_mat, nc_mat)
+        #Slice is: (slice, slice)
+        self.assertEqual(dp_mat[:, :], nc_mat[:, :])
+        self.assertEqual(dp_mat[1:3, 2:4], nc_mat[1:3, 2:4])
+        self.assertEqual(dp_mat, nc_mat)
+        #Slice is: (int, int)
+        self.assertEqual(dp_mat[:, 4], nc_mat[:, 4])
+        self.assertEqual(dp_mat[1:3, 7], nc_mat[1:3, 7])
+        self.assertEqual(dp_mat, nc_mat)
+
+    def test_piazza_clarification_error_slice(self):
+        dp_mat, nc_mat = rand_dp_nc_matrix(10, 10, seed=0)
+        #int, slice, (int, slice), (slice, int), (slice, slice), or (int, int)
+        with self.assertRaises(TypeError):
+            dp_mat[:dp_mat]
+        with self.assertRaises(TypeError):
+            nc_mat[:nc_mat]
+        with self.assertRaises(TypeError):
+            dp_mat[dp_mat:]
+        with self.assertRaises(TypeError):
+            nc_mat[nc_mat:]
+        with self.assertRaises(TypeError):
+            dp_mat[::dp_mat]
+        with self.assertRaises(TypeError):
+            nc_mat[::nc_mat]
+        with self.assertRaises(TypeError):
+            dp_mat[dp_mat]
+        with self.assertRaises(TypeError):
+            nc_mat[nc_mat]
+        with self.assertRaises(IndexError):
+            dp_mat[11]
+        with self.assertRaises(IndexError):
+            nc_mat[11]
+        with self.assertRaises(IndexError):
+            dp_mat[-12]
+        with self.assertRaises(IndexError):
+            nc_mat[-12]
+        self.assertEqual(dp_mat[-1:], nc_mat[-1:])
+        self.assertEqual(dp_mat[4:-1], nc_mat[4:-1])
+        with self.assertRaises(IndexError):
+            dp_mat[:, -1]
+        with self.assertRaises(IndexError):
+            nc_mat[:, -1]
+        with self.assertRaises(IndexError):
+            dp_mat[-1, :]
+        with self.assertRaises(IndexError):
+            nc_mat[-1, :]
+        with self.assertRaises(IndexError):
+            dp_mat[:, 10]
+        with self.assertRaises(IndexError):
+            nc_mat[:, 10]
+        with self.assertRaises(IndexError):
+            dp_mat[10, :]
+        with self.assertRaises(IndexError):
+            nc_mat[10, :]
+        with self.assertRaises(ValueError):
+            dp_mat[::2]
+        with self.assertRaises(ValueError):
+            nc_mat[::2]
+        with self.assertRaises(ValueError):
+            dp_mat[1:3:2]
+        with self.assertRaises(ValueError):
+            nc_mat[1:3:2]
+        with self.assertRaises(ValueError):
+            dp_mat[::0]
+        with self.assertRaises(ValueError):
+            nc_mat[::0]
+        with self.assertRaises(ValueError):
+            dp_mat[::-1]
+        with self.assertRaises(ValueError):
+            nc_mat[::-1]
+        with self.assertRaises(ValueError):
+            dp_mat[:-1:2]
+        with self.assertRaises(ValueError):
+            nc_mat[:-1:2]
+        with self.assertRaises(ValueError):
+            dp_mat[-1::2]
+        with self.assertRaises(ValueError):
+            nc_mat[-1::2]
+        with self.assertRaises(ValueError):
+            dp_mat[::2, ::2]
+        with self.assertRaises(ValueError):
+            nc_mat[::2, ::2]
+        self.assertEqual(dp_mat[::, ::], nc_mat[::, ::])
+        with self.assertRaises(IndexError):
+            dp_mat[:, -1]
+        with self.assertRaises(IndexError):
+            nc_mat[:, -1]
+        with self.assertRaises(IndexError):
+            dp_mat[-1, :]
+        with self.assertRaises(IndexError):
+            nc_mat[-1, :]
+        with self.assertRaises(IndexError):
+            dp_mat[-1, 1]
+        with self.assertRaises(IndexError):
+            nc_mat[-1, 1]
+        with self.assertRaises(IndexError):
+            dp_mat[1, -1]
+        with self.assertRaises(IndexError):
+            nc_mat[1, -1]
+        #Ask on piazza about these weird edge cases
+        #with self.assertRaises(TypeError):
+        #dp_mat[1, None]
+        #dp_mat[None, 1]
+        #print(dp_mat[dp_mat, 1])
+        #print(dp_mat[None, 1])
+        #print(nc_mat[nc_mat, 1])
+        #print(nc_mat[None, 1])
+        
+        #with self.assertRaises(ValueError):
+        #    nc_mat[1, nc_mat]
+
+        self.assertEqual(dp_mat[:123], nc_mat[:123])
+        with self.assertRaises(ValueError):
+            dp_mat[123:]
+        with self.assertRaises(ValueError):
+            nc_mat[123:]
+        with self.assertRaises(ValueError):
+            dp_mat[0, 123:]
+        with self.assertRaises(ValueError):
+            nc_mat[0, 123:]
+        with self.assertRaises(ValueError):
+            dp_mat[123:, 0]
+        with self.assertRaises(ValueError):
+            nc_mat[123:, 0]
+        with self.assertRaises(ValueError):
+            dp_mat[123:, 123]
+        with self.assertRaises(ValueError):
+            nc_mat[123:, 123]
+        with self.assertRaises(IndexError):
+            dp_mat[:, 123]
+        with self.assertRaises(IndexError):
+            nc_mat[:, 123]
+        self.assertEqual(dp_mat[:123, :123], nc_mat[:123, :123])
+        self.assertEqual(dp_mat[:-1, :123], nc_mat[:-1, :123])
+
+
+        dp_mat, nc_mat = rand_dp_nc_matrix(1, 10, seed=0)
+        #int, slice, (int, slice), (slice, int), (slice, slice), or (int, int)
+        with self.assertRaises(TypeError):
+            dp_mat[:dp_mat]
+        with self.assertRaises(TypeError):
+            nc_mat[:nc_mat]
+        with self.assertRaises(TypeError):
+            dp_mat[dp_mat:]
+        with self.assertRaises(TypeError):
+            nc_mat[nc_mat:]
+        with self.assertRaises(TypeError):
+            dp_mat[::dp_mat]
+        with self.assertRaises(TypeError):
+            nc_mat[::nc_mat]
+        with self.assertRaises(TypeError):
+            dp_mat[dp_mat]
+        with self.assertRaises(TypeError):
+            nc_mat[nc_mat]
+        with self.assertRaises(IndexError):
+            dp_mat[11]
+        with self.assertRaises(IndexError):
+            nc_mat[11]
+        with self.assertRaises(IndexError):
+            dp_mat[-12]
+        with self.assertRaises(IndexError):
+            nc_mat[-12]
+        self.assertEqual(dp_mat[-1:], nc_mat[-1:])
+        self.assertEqual(dp_mat[4:-1], nc_mat[4:-1])
+        with self.assertRaises(TypeError):
+            dp_mat[:, -1]
+        with self.assertRaises(TypeError):
+            nc_mat[:, -1]
+        with self.assertRaises(ValueError):
+            dp_mat[::2]
+        with self.assertRaises(ValueError):
+            nc_mat[::2]
+        with self.assertRaises(ValueError):
+            dp_mat[1:3:2]
+        with self.assertRaises(ValueError):
+            nc_mat[1:3:2]
+        with self.assertRaises(ValueError):
+            dp_mat[::0]
+        with self.assertRaises(ValueError):
+            nc_mat[::0]
+        with self.assertRaises(ValueError):
+            dp_mat[::-1]
+        with self.assertRaises(ValueError):
+            nc_mat[::-1]
+        with self.assertRaises(ValueError):
+            dp_mat[:-1:2]
+        with self.assertRaises(ValueError):
+            nc_mat[:-1:2]
+        with self.assertRaises(ValueError):
+            dp_mat[-1::2]
+        with self.assertRaises(ValueError):
+            nc_mat[-1::2]
+        self.assertEqual(dp_mat[:123], nc_mat[:123])
+        with self.assertRaises(ValueError):
+            dp_mat[123:]
+        with self.assertRaises(ValueError):
+            nc_mat[123:]
+
+        dp_mat, nc_mat = rand_dp_nc_matrix(10, 1, seed=0)
+        #int, slice, (int, slice), (slice, int), (slice, slice), or (int, int)
+        with self.assertRaises(TypeError):
+            dp_mat[:dp_mat]
+        with self.assertRaises(TypeError):
+            nc_mat[:nc_mat]
+        with self.assertRaises(TypeError):
+            dp_mat[dp_mat:]
+        with self.assertRaises(TypeError):
+            nc_mat[nc_mat:]
+        with self.assertRaises(TypeError):
+            dp_mat[::dp_mat]
+        with self.assertRaises(TypeError):
+            nc_mat[::nc_mat]
+        with self.assertRaises(TypeError):
+            dp_mat[dp_mat]
+        with self.assertRaises(TypeError):
+            nc_mat[nc_mat]
+        with self.assertRaises(IndexError):
+            dp_mat[11]
+        with self.assertRaises(IndexError):
+            nc_mat[11]
+        with self.assertRaises(IndexError):
+            dp_mat[-12]
+        with self.assertRaises(IndexError):
+            nc_mat[-12]
+        self.assertEqual(dp_mat[-1:], nc_mat[-1:])
+        self.assertEqual(dp_mat[4:-1], nc_mat[4:-1])
+        with self.assertRaises(TypeError):
+            dp_mat[:, -1]
+        with self.assertRaises(TypeError):
+            nc_mat[:, -1]
+        with self.assertRaises(ValueError):
+            dp_mat[::2]
+        with self.assertRaises(ValueError):
+            nc_mat[::2]
+        with self.assertRaises(ValueError):
+            dp_mat[1:3:2]
+        with self.assertRaises(ValueError):
+            nc_mat[1:3:2]
+        with self.assertRaises(ValueError):
+            dp_mat[::0]
+        with self.assertRaises(ValueError):
+            nc_mat[::0]
+        with self.assertRaises(ValueError):
+            dp_mat[::-1]
+        with self.assertRaises(ValueError):
+            nc_mat[::-1]
+        with self.assertRaises(ValueError):
+            dp_mat[:-1:2]
+        with self.assertRaises(ValueError):
+            nc_mat[:-1:2]
+        with self.assertRaises(ValueError):
+            dp_mat[-1::2]
+        with self.assertRaises(ValueError):
+            nc_mat[-1::2]
+        self.assertEqual(dp_mat[:123], nc_mat[:123])
+        with self.assertRaises(ValueError):
+            dp_mat[123:]
+        with self.assertRaises(ValueError):
+            nc_mat[123:]
+    
+    def test_piazza_thread_slice(self):
+        dp_mat, nc_mat = rand_dp_nc_matrix(2, 2, seed=1)
+        with self.assertRaises(TypeError):
+            dp_mat[:nc_mat]
+        with self.assertRaises(TypeError):
+            nc_mat[:nc_mat]
+
+    def test_fruit_ninja_slice(self):
+        dp_mat, nc_mat = rand_dp_nc_matrix(10, 10, seed=0)
+
+        with self.assertRaises(TypeError):
+            dp_mat[:, :, :]
+        with self.assertRaises(TypeError):
+            nc_mat[:, :, :]
+        with self.assertRaises(ValueError):
+            dp_mat[::0]
+        with self.assertRaises(ValueError):
+            nc_mat[::0]
+        with self.assertRaises(ValueError):
+            dp_mat[::-2]
+        with self.assertRaises(ValueError):
+            nc_mat[::-2]
+        with self.assertRaises(ValueError):
+            dp_mat[1:2:-2]
+        with self.assertRaises(ValueError):
+            nc_mat[1:2:-2]
+        
+        del dp_mat
+        del nc_mat
+
+        dp_mat, nc_mat = rand_dp_nc_matrix(1, 10, seed=0)
+
+        with self.assertRaises(TypeError):
+            dp_mat[:, :, :]
+        with self.assertRaises(TypeError):
+            nc_mat[:, :, :]
+        with self.assertRaises(ValueError):
+            dp_mat[::0]
+        with self.assertRaises(ValueError):
+            nc_mat[::0]
+        with self.assertRaises(ValueError):
+            dp_mat[::-2]
+        with self.assertRaises(ValueError):
+            nc_mat[::-2]
+        with self.assertRaises(ValueError):
+            dp_mat[1:2:-2]
+        with self.assertRaises(ValueError):
+            nc_mat[1:2:-2]
+        
+
+class TestSliceSet(TestCase):
+    def test_slice_set_error(self):
         a = nc.Matrix(4, 4)
         with self.assertRaises(IndexError):
             a[-1][0] = 0
@@ -542,7 +963,7 @@ class TestSet(TestCase):
         with self.assertRaises(IndexError):
             a[0][5] = 0
 
-    def test_slice_spec1_set(self):
+    def test_spec1_slice_set(self):
         a = nc.Matrix(3, 3)
         b = dp.Matrix(3, 3)
         a[0:1, 0:1] = 0.0
@@ -562,7 +983,7 @@ class TestSet(TestCase):
         self.assertEqual(a, b)
         self.assertEqual(a.shape, b.shape)
         
-    def test_slice_spec2_set(self):
+    def test_spec2_slice_set(self):
         a = nc.Matrix(2, 2)
         c = dp.Matrix(2, 2)
         a[0:1, 0:1] = 1.0
@@ -584,7 +1005,7 @@ class TestSet(TestCase):
         self.assertEqual(b, d)
         self.assertEqual(b.shape, d.shape)
         
-    def test_slice_spec3_set(self):
+    def test_spec3_slice_set(self):
         a = nc.Matrix(4, 4)
         d = dp.Matrix(4, 4)
         b = a[0:3, 0:3]
@@ -600,14 +1021,6 @@ class TestSet(TestCase):
         self.assertEqual(a, d)
         self.assertEqual(a.shape, d.shape)
 
-    def test_basic_set(self):
-        dp_mat, nc_mat = rand_dp_nc_matrix(100, 100, seed=0)
-        for i in range(1000):
-            rand_row = np.random.randint(dp_mat.shape[0])
-            rand_col = np.random.randint(dp_mat.shape[1])
-            self.assertEqual(nc_mat.set(rand_row, rand_col, i), dp_mat.set(rand_row, rand_col, i))
-
-        self.assertEqual(dp_mat, nc_mat)
 
 class TestShape(TestCase):
     def test_shape(self):

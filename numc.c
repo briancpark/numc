@@ -638,61 +638,99 @@ PyObject *Matrix61c_subscript(Matrix61c* self, PyObject* key) {
      *
      * How to handle slice object parsing was inspired from https://stackoverflow.com/questions/23214380/how-to-pass-a-tuple-of-slice-objects-to-c-via-the-python-c-api
      */
-
     matrix *slice = NULL;
 
     if (PyLong_Check(key)) {
         //When key is an int
-        int allocate_ref_error;
-
-        if (PyLong_AsLong(key) < 0 || (PyLong_AsLong(key) > self->mat->rows && !self->mat->is_1d)) {
+        if (PyLong_AsLong(key) < 0 || (PyLong_AsLong(key) >= self->mat->rows && !self->mat->is_1d)) {
             PyErr_SetString(PyExc_IndexError, "Indices out of range!");
             return NULL;
         }
-
         if (self->mat->is_1d && self->mat->rows == 1) {
             return PyFloat_FromDouble(get(self->mat, 0, PyLong_AsLong(key)));
         } else if (self->mat->is_1d && self->mat->cols == 1) {
             return PyFloat_FromDouble(get(self->mat, PyLong_AsLong(key), 0));
         } else {
-            allocate_ref_error = allocate_matrix_ref(&slice, self->mat, PyLong_AsLong(key), 0, 1, self->mat->cols);
-        }
-        
-        if (allocate_ref_error) {
-            deallocate_matrix(slice);
-            return NULL;
+            //If array is 2d, proceed as normal
+            if (allocate_matrix_ref(&slice, self->mat, PyLong_AsLong(key), 0, 1, self->mat->cols)) {
+                deallocate_matrix(slice);
+                return NULL;
+            }
         }
     } else if (PySlice_Check(key)) {
+        //When key is a slice
         Py_ssize_t start = 0;
         Py_ssize_t stop = 0;
         Py_ssize_t step = 0;
         Py_ssize_t slicelength = 0;
-        
+
+        //Handle special 1d array cases
         if (self->mat->is_1d && self->mat->rows == 1) {
-            PySlice_GetIndicesEx(key, self->mat->cols, &start, &stop, &step, &slicelength);
-            int allocate_ref_error = allocate_matrix_ref(&slice, self->mat, 0, start, self->mat->rows, stop - start);
+            if (PySlice_GetIndicesEx(key, self->mat->cols, &start, &stop, &step, &slicelength)) {
+                return NULL;
+            }
+
+            if (stop - start == 0 || step < 1) {
+                PyErr_SetString(PyExc_ValueError, "Slice info not valid!");
+                return NULL;
+            }
             
-            if (allocate_ref_error) {
+            //If the slice outputs just one number, return a number rather than an array
+            if (stop - start == 1) {
+                return PyFloat_FromDouble(get(self->mat, 0, start));
+            }
+
+            if (allocate_matrix_ref(&slice, self->mat, 0, start, self->mat->rows, stop - start)) {
                 deallocate_matrix(slice);
                 return NULL;
             }
         } else if (self->mat->is_1d && self->mat->cols == 1) {
             //A single slice
-            PySlice_GetIndicesEx(key, self->mat->rows, &start, &stop, &step, &slicelength);
-            int allocate_ref_error = allocate_matrix_ref(&slice, self->mat, start, 0, stop - start, self->mat->cols);
+            if (PySlice_GetIndicesEx(key, self->mat->rows, &start, &stop, &step, &slicelength)) {
+                return NULL;
+            }
+
+            if (stop - start == 0 || step < 1) {
+                PyErr_SetString(PyExc_ValueError, "Slice info not valid!");
+                return NULL;
+            }
+
+            if (stop - start == 1) {
+                return PyFloat_FromDouble(get(self->mat, start, 0));
+            }
             
-            if (allocate_ref_error) {
+            if (allocate_matrix_ref(&slice, self->mat, start, 0, stop - start, self->mat->cols)) {
                 deallocate_matrix(slice);
                 return NULL;
             }
-        } 
-        if ((step == 0 && !self->mat->is_1d) || step > 1) {
-            PyErr_SetString(PyExc_ValueError, "Slice info not valid!");
-            return NULL;
+        } else {
+            //Single slice for 2D case. Essentially means returning a 2D/1D sub matrix        
+            if (PySlice_GetIndicesEx(key, self->mat->rows, &start, &stop, &step, &slicelength)) {
+                return NULL;
+            }
+            
+            //If there are steps or 0 size slice, throw ValueError
+            if (stop - start == 0 || step != 1) {
+                PyErr_SetString(PyExc_ValueError, "Slice info not valid!");
+                return NULL;
+            }
+            
+            if (allocate_matrix_ref(&slice, self->mat, start, 0, stop - start, self->mat->cols)) {
+                deallocate_matrix(slice);
+                return NULL;
+            }   
         }
-
     } else if (PyTuple_Check(key)){
-        //When key is now a tuple of slices
+        /* When key is now a tuple
+         * 
+         * Combinations include:
+         * 
+         * (int, slice)
+         * (slice, int)
+         * (slice, slice)
+         * (int, int)
+         */
+
         if (self->mat->is_1d) {
             PyErr_SetString(PyExc_TypeError, "1D matrices only support single slice!");
             return NULL;
@@ -701,7 +739,6 @@ PyObject *Matrix61c_subscript(Matrix61c* self, PyObject* key) {
         PyObject *row_slice = NULL;
         PyObject *col_slice = NULL;
         if (!PyArg_UnpackTuple(key, "key", 2, 2, &row_slice, &col_slice)) {
-            //TODO: Print a python error here
             return NULL;
         }
 
@@ -717,35 +754,50 @@ PyObject *Matrix61c_subscript(Matrix61c* self, PyObject* key) {
 
         if (PySlice_Check(row_slice)) {
             //Row is a slice type
-            PySlice_GetIndicesEx(row_slice, self->mat->rows, &row_start, &row_stop, &row_step, &row_slicelength);
-        } else { //PyLong_Check(row_slice) doesn't work, Ask a TA if we can inject undefined symbols a[1:?] etc.
+            if (PySlice_GetIndicesEx(row_slice, self->mat->rows, &row_start, &row_stop, &row_step, &row_slicelength)) {
+                return NULL;
+            }
+
+            //If there are steps or 0 size slice, throw ValueError
+            if (row_stop - row_start == 0 || row_step != 1) {
+                PyErr_SetString(PyExc_ValueError, "Slice info not valid!");
+                return NULL;
+            }
+        } else if (PyLong_Check(row_slice)) {
             //Row is an int type
             row_start = PyLong_AsLong(row_slice);
             row_stop = row_start + 1;
-        } 
+        } else {
+            //Throw an error here? Ask TA
+            //return NULL;
+        }
 
         if (PySlice_Check(col_slice)) {
             //Row is a slice type
-            PySlice_GetIndicesEx(col_slice, self->mat->cols, &col_start, &col_stop, &col_step, &col_slicelength);
-        } else { //PyLong_Check(col_slice) doesn't work, Ask a TA if we can inject undefined symbols a[1:?] etc.
+            if (PySlice_GetIndicesEx(col_slice, self->mat->cols, &col_start, &col_stop, &col_step, &col_slicelength)) {
+                return NULL;
+            }
+
+            //If there are steps or 0 size slice, throw ValueError
+            if (col_stop - col_start == 0 || col_step != 1) {
+                PyErr_SetString(PyExc_ValueError, "Slice info not valid!");
+                return NULL;
+            }
+        } else if (PyLong_Check(col_slice)) {
             //Row is an int type
             col_start = PyLong_AsLong(col_slice);
             col_stop = col_start + 1;
-        } 
-
-        if (row_step < 0 || row_step > 1 || col_step < 0 || col_step > 1) {
-            PyErr_SetString(PyExc_ValueError, "Slice info not valid!");
-            return NULL;
+        }  else {
+            //Throw an error here? Ask TA
+            //return NULL;
         }
 
         if ((PyLong_Check(row_slice) && PyLong_Check(col_slice)) || 
             (row_stop - row_start == 1 && col_stop - col_start == 1)) {
             return PyFloat_FromDouble(get(self->mat, row_start, col_start));
         }
-
-        int allocate_ref_error = allocate_matrix_ref(&slice, self->mat, row_start, col_start, row_stop - row_start, col_stop - col_start);
         
-        if (allocate_ref_error) {
+        if (allocate_matrix_ref(&slice, self->mat, row_start, col_start, row_stop - row_start, col_stop - col_start)) {
             deallocate_matrix(slice);
             return NULL;
         }
@@ -777,6 +829,10 @@ int Matrix61c_set_subscript(Matrix61c* self, PyObject *key, PyObject *v) {
     /* TODO: YOUR CODE HERE */
     if (PyLong_Check(key) && PyList_Check(v)) {
         //When key is an int and value is list
+        if (self->mat->cols != PyList_GET_SIZE(v)) {
+            PyErr_SetString(PyExc_ValueError, "Value is not valid!");
+            return -1;
+        }
         for (int j = 0; j < PyList_Size(v); j++) {
             set(self->mat, PyLong_AsLong(key), j, PyFloat_AsDouble(PyList_GetItem(v, j)));
         }
@@ -818,7 +874,9 @@ int Matrix61c_set_subscript(Matrix61c* self, PyObject *key, PyObject *v) {
 
         if (PySlice_Check(row_slice)) {
             //Row is a slice type
-            PySlice_GetIndicesEx(row_slice, self->mat->rows, &row_start, &row_stop, &row_step, &row_slicelength);
+            if (PySlice_GetIndicesEx(row_slice, self->mat->rows, &row_start, &row_stop, &row_step, &row_slicelength)) {
+                return -1;
+            }
         } else { //PyLong_Check(row_slice) doesn't work, Ask a TA if we can inject undefined symbols a[1:?] etc.
             //Row is an int type
             row_start = PyLong_AsLong(row_slice);
@@ -827,7 +885,9 @@ int Matrix61c_set_subscript(Matrix61c* self, PyObject *key, PyObject *v) {
 
         if (PySlice_Check(col_slice)) {
             //Row is a slice type
-            PySlice_GetIndicesEx(col_slice, self->mat->cols, &col_start, &col_stop, &col_step, &col_slicelength);
+            if (PySlice_GetIndicesEx(col_slice, self->mat->cols, &col_start, &col_stop, &col_step, &col_slicelength)) {
+                return -1;
+            }
         } else { //PyLong_Check(col_slice) doesn't work, Ask a TA if we can inject undefined symbols a[1:?] etc.
             //Row is an int type
             col_start = PyLong_AsLong(col_slice);

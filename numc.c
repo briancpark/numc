@@ -642,8 +642,11 @@ PyObject *Matrix61c_subscript(Matrix61c* self, PyObject* key) {
 
     if (PyLong_Check(key)) {
         //When key is an int
-        if (PyLong_AsLong(key) < 0 || (PyLong_AsLong(key) >= self->mat->rows && !self->mat->is_1d)) {
-            PyErr_SetString(PyExc_IndexError, "Indices out of range!");
+        if (PyLong_AsLong(key) < 0 || 
+            (PyLong_AsLong(key) >= self->mat->rows && !self->mat->is_1d) || 
+            (PyLong_AsLong(key) >= self->mat->rows && self->mat->is_1d && self->mat->cols == 1) ||
+            (PyLong_AsLong(key) >= self->mat->cols && self->mat->is_1d && self->mat->rows == 1)) {
+            PyErr_SetString(PyExc_IndexError, "Index out of range!");
             return NULL;
         }
         if (self->mat->is_1d && self->mat->rows == 1) {
@@ -670,7 +673,7 @@ PyObject *Matrix61c_subscript(Matrix61c* self, PyObject* key) {
                 return NULL;
             }
 
-            if (stop - start == 0 || step < 1) {
+            if (stop - start == 0 || step != 1) {
                 PyErr_SetString(PyExc_ValueError, "Slice info not valid!");
                 return NULL;
             }
@@ -690,7 +693,7 @@ PyObject *Matrix61c_subscript(Matrix61c* self, PyObject* key) {
                 return NULL;
             }
 
-            if (stop - start == 0 || step < 1) {
+            if (stop - start == 0 || step != 1) {
                 PyErr_SetString(PyExc_ValueError, "Slice info not valid!");
                 return NULL;
             }
@@ -827,34 +830,116 @@ PyObject *Matrix61c_subscript(Matrix61c* self, PyObject* key) {
  */
 int Matrix61c_set_subscript(Matrix61c* self, PyObject *key, PyObject *v) {
     /* TODO: YOUR CODE HERE */
-    if (PyLong_Check(key) && PyList_Check(v)) {
-        //When key is an int and value is list
-        if (self->mat->cols != PyList_GET_SIZE(v)) {
+    if (PyLong_Check(key)) {
+        //When key is an int
+        
+        //Generic error cases handled here
+        if (PyLong_AsLong(key) < 0 || 
+            (PyLong_AsLong(key) >= self->mat->rows && !self->mat->is_1d) || 
+            (PyLong_AsLong(key) >= self->mat->rows && self->mat->is_1d && self->mat->cols == 1) ||
+            (PyLong_AsLong(key) >= self->mat->cols && self->mat->is_1d && self->mat->rows == 1)) {
+            PyErr_SetString(PyExc_IndexError, "Index out of range!");
+            return -1;
+        }
+
+        if (PyLong_Check(v) || PyFloat_Check(v)) {
+            //When slice is 1d array and key is singular value
+            if (!self->mat->is_1d) {
+                PyErr_SetString(PyExc_TypeError, "Value is not valid!");
+                return -1;
+            }
+
+            if (self->mat->cols == 1) {
+                set(self->mat, 0, PyLong_AsLong(key), PyFloat_AsDouble(v));
+            } else {
+                set(self->mat, PyLong_AsLong(key), 0, PyFloat_AsDouble(v));
+            }
+        } else if (PyList_Check(v)) {
+            //When slice is a 2d array, and we are replacing a row
+            if (self->mat->is_1d) {
+                PyErr_SetString(PyExc_TypeError, "Value is not valid!");
+                return -1;
+            }
+
+            if (PyList_Size(v) != self->mat->cols) {
+                PyErr_SetString(PyExc_ValueError, "Value is not valid!");
+                return -1;
+            }
+
+            for (int j = 0; j < (int)PyList_Size(v); j++) {
+                set(self->mat, PyLong_AsLong(key), j, PyFloat_AsDouble(PyList_GetItem(v, j)));
+            }
+        } else {
             PyErr_SetString(PyExc_ValueError, "Value is not valid!");
             return -1;
         }
-        for (int j = 0; j < PyList_Size(v); j++) {
-            set(self->mat, PyLong_AsLong(key), j, PyFloat_AsDouble(PyList_GetItem(v, j)));
+    } else if (PySlice_Check(key)) {
+        //When key is a slice
+        Py_ssize_t start = 0;
+        Py_ssize_t stop = 0;
+        Py_ssize_t step = 0;
+        Py_ssize_t slicelength = 0;
+
+        if (self->mat->rows == 1) {
+            if (PySlice_GetIndicesEx(key, self->mat->cols, &start, &stop, &step, &slicelength)) {
+                return -1;
+            }
+        } else {
+            if (PySlice_GetIndicesEx(key, self->mat->rows, &start, &stop, &step, &slicelength)) {
+                return -1;
+            }
         }
-    } else if (PyLong_Check(key) && (PyFloat_Check(v) || PyLong_Check(v))) {
-        //A single slice and if matrix is 1d
-        if (self->mat->is_1d && self->mat->rows == 1) {
-            if (PyLong_AsLong(key) < 0 || PyLong_AsLong(key) >= self->mat->cols) {
-                PyErr_SetString(PyExc_IndexError, "Indices out of range!");
+       
+        if (step != 1) {
+            PyErr_SetString(PyExc_ValueError, "Slice info not valid!");
+            return -1;
+        }
+
+        //After parsing slice data, now assign the values appropriately depending on the type of v
+        if (PyLong_Check(v) || PyFloat_Check(v)) {
+            //If v is a singular value, it must be for a 1d array
+            if (self->mat->is_1d && (stop - start == 1) && self->mat->rows == 1) {
+                set(self->mat, 0, start, PyFloat_AsDouble(v));
+            } else if (self->mat->is_1d && (stop - start == 1) && self->mat->cols == 1) {
+                set(self->mat, start, 0, PyFloat_AsDouble(v));
+            } else {
+                PyErr_SetString(PyExc_TypeError, "TypeError: Value is not valid!");
                 return -1;
             }
-            set(self->mat, 0, PyLong_AsLong(key), PyFloat_AsDouble(v));
-            return 0;
-        } else if (self->mat->is_1d && self->mat->cols == 1) {
-            //TODO: check implementation here!
-            if (PyLong_AsLong(key) < 0 || PyLong_AsLong(key) >= self->mat->rows) {
-                PyErr_SetString(PyExc_IndexError, "Indices out of range!");
+        } else if (PyList_Check(v) && !PyList_Check(PyList_GetItem(v, 0))) {
+            //If v is list
+            if ((stop - start) <= 1 || (stop - start) != PyList_Size(v) || !self->mat->is_1d) {
+                PyErr_SetString(PyExc_TypeError, "Value is not valid!");
+                return -1;
+            } else if (self->mat->rows == 1) {
+                for (int i = start; i < stop; i++) {
+                    set(self->mat, 0, i, PyFloat_AsDouble(PyList_GetItem(v, i - start)));
+                }
+            } else {
+                //Case for col vector 
+                for (int i = start; i < stop; i++) {
+                    set(self->mat, i, 0, PyFloat_AsDouble(PyList_GetItem(v, i - start)));
+                }
+            }
+        } else if (PyList_Check(v) && PyList_Check(PyList_GetItem(v, 0)) && !self->mat->is_1d) {
+            //If v is a nested list, it is reserved for 2D array
+            if (stop - start != PyList_Size(v) || self->mat->cols != PyList_Size(PyList_GetItem(v, 0))) {
+                PyErr_SetString(PyExc_ValueError, "Value is not valid!");
                 return -1;
             }
-            set(self->mat, 0, PyLong_AsLong(key),  PyFloat_AsDouble(v));
-            return 0;
+            
+            for (int i = start; i < stop; i++) {
+                for (int j = 0; j < self->mat->cols; j++) {
+                    set(self->mat, i, j, PyFloat_AsDouble(PyList_GetItem(PyList_GetItem(v, i - start), j)));
+                }
+            }
+        } else {
+            //Handle error case here
+            PyErr_SetString(PyExc_ValueError, "Value is not valid!");
+            return -1;
         }
     } else if (PyTuple_Check(key)){
+        //If it's a tuple of slices
         PyObject *row_slice = NULL;
         PyObject *col_slice = NULL;
         if (!PyArg_UnpackTuple(key, "key", 2, 2, &row_slice, &col_slice)) {

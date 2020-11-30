@@ -312,7 +312,7 @@ int sub_matrix(matrix *result, matrix *mat1, matrix *mat2) {
  * Return 0 upon success and a nonzero value upon failure.
  * Remember that matrix multiplication is not the same as multiplying individual elements.
  */
-int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
+inline int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
     /* TODO: YOUR CODE HERE */
     if ((result->rows == mat1->rows) && (result->cols == mat2->cols) && (mat1->cols == mat2->rows)) { 
         double *data = (double*) calloc(mat1->rows * mat2->cols, sizeof(double));
@@ -320,7 +320,7 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
             PyErr_SetString(PyExc_RuntimeError, "Memory allocation failed!");
             return 1;
         }
-
+        
         double *result_pointer = result->data[0];
         int blocksize = 32;
 
@@ -339,23 +339,24 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
 
         #pragma omp parallel for num_threads(4)
         for (int i_blocked = 0; i_blocked < mat1->rows; i_blocked += blocksize) {
-            for (int j_blocked = 0; j_blocked < mat2->cols; j_blocked += blocksize) { 
+            for (int j_blocked = 0; j_blocked < mat2->cols; j_blocked += blocksize) {
                 for (int k_blocked = 0; k_blocked < mat2->rows; k_blocked += blocksize) {
                     for (int i = i_blocked; i < (i_blocked + blocksize) && i < mat1->rows; i++) { 
-                        for (int j = j_blocked; j < j_blocked + blocksize && j < mat2->cols / 16 * 16; j += 16) {    
-                            _mm_prefetch(data + (i * mat2->cols) + j, _MM_HINT_T1);
+                        //_mm_prefetch(data + (i * mat2->cols), _MM_HINT_T0);
+                        for (int j = j_blocked; j < j_blocked + blocksize && j < mat2->cols / 16 * 16; j += 16) {
+                            //_mm_prefetch(data + (i * mat2->cols) + j, _MM_HINT_T2);
                             __m256d c0 = _mm256_loadu_pd(data + (i * mat2->cols) + j);
                             __m256d c1 = _mm256_loadu_pd(data + (i * mat2->cols) + j + 4);
                             __m256d c2 = _mm256_loadu_pd(data + (i * mat2->cols) + j + 8);
                             __m256d c3 = _mm256_loadu_pd(data + (i * mat2->cols) + j + 12);
-                        
-                            for (int k = k_blocked; k < k_blocked + blocksize && k < mat2->rows; k++) {                           
+                            
+                            for (int k = k_blocked; k < k_blocked + blocksize && k < mat2->rows; k++/*, _mm_prefetch(mat1->data[i] + k, _MM_HINT_T1), _mm_prefetch(mat2->data[k] + j, _MM_HINT_T1)*/) {                           
                                 c0 = _mm256_fmadd_pd(_mm256_broadcast_sd(mat1->data[i] + k), _mm256_loadu_pd(mat2->data[k] + j), c0);
                                 c1 = _mm256_fmadd_pd(_mm256_broadcast_sd(mat1->data[i] + k), _mm256_loadu_pd(mat2->data[k] + j + 4), c1);
                                 c2 = _mm256_fmadd_pd(_mm256_broadcast_sd(mat1->data[i] + k), _mm256_loadu_pd(mat2->data[k] + j + 8), c2);
                                 c3 = _mm256_fmadd_pd(_mm256_broadcast_sd(mat1->data[i] + k), _mm256_loadu_pd(mat2->data[k] + j + 12), c3);                         
                             }
-                        
+
                             _mm256_storeu_pd(data + (i * mat2->cols) + j, c0); 
                             _mm256_storeu_pd(data + (i * mat2->cols) + j + 4, c1); 
                             _mm256_storeu_pd(data + (i * mat2->cols) + j + 8, c2); 

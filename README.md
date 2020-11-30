@@ -47,7 +47,7 @@ Hardest part were slicing, just due to the sheer complexity and *MANY* different
 We also kept failing `set()` for the most minor and funniest reason. Brian kept improving on slicing functionality, thinking that the autograder's set correctness test robustly tested on it. But turns our it was resolved in OH when Brian realized that `set()` didn't have to be invoked through slicing. It could be invoked through `set(self, i, j, val)` in `Python`. The bug was just a simple error handling between `if (!PyLong_Check(val) || !PyFloat_Check(val))` to `if (!PyLong_Check(val) && !PyFloat_Check(val))` Even though time debugging it was fustrating, at least Brian made sure many slicing errors were handled and properly working. 
 
 ### Testing
-After the core parts of Task 3 was implemented, we could finally move on to testing our `numc` library and ensure that it works correctly. The Python `unittest` framework can be abused through tactical testing and Brian added fuzz, scaling, and fuzz repetition global parameters to scale up the testing when needed. Parameters were catiously set and tuned as Brian almost crashed an entire Hive server for running large tests. Brian also crashed a server for not realizing there was a memory leak in `allocate_matrix()` and the server would hit 32GB of RAM and then die.
+After the core parts of Task 3 was implemented, we could finally move on to testing our `numc` library and ensure that it works correctly. The Python `unittest` framework can be abused through tactical testing and Brian added fuzz, scaling, and fuzz repetition global parameters to scale up the testing when needed. Parameters were catiously set and tuned as Brian almost crashed an entire Hive server for running large tests. Brian also crashed a server for not realizing there was a memory leak in `deallocate_matrix()` and the server would hit 32GB of RAM and then die.
 
 For efficient TDD workflow, Brian made a simple bash script to compile and run all tests under the executable 
 ```
@@ -71,7 +71,6 @@ for (int i = 0; i < mat1->rows; i++) {
         result->data[i][j] = mat1->data[i][j] + mat2->data[i][j];  
     }
 }
-return 0;
 ```
 
 #### Improving Memory Spatial Locality (Better Caching)
@@ -134,11 +133,10 @@ for (int i = 0; i < mat1->rows * mat1->cols / 16 * 16; i += 16) {
 for (int i = mat1->rows * mat1->cols / 16 * 16; i < mat1->rows * mat1->cols; i++) {
     *(res_pointer + i) = *(mat1_pointer + i) + *(mat2_pointer + i); 
 }
-return 0;
 ```
 
 #### I hope the rope is... Multithreaded
-Faster! We applied OpenMP, with a simple `pragma omp parallel for`. Was it really that easy though? No, as you saw in the previous iteration with SIMD, we had to stuff all the operations in one line. We did this to prevent any race conditions or false sharing that would happen with parallelization. Even though the Hive's machine have 8 threads, they are hyperthreaded, and the computer architecture is really just 4 cores. Hyperthreading makes it so that the 2 threads in a core would compete for data, so we catiously chose to make it run on 4 threads instead. This gives us a total speedup of 5X compared to `dumbpy`, sometimes 5.09X if lucky!
+Faster! We applied OpenMP, with a simple `pragma omp parallel for`. Was it really that easy though? No, as you saw in the previous iteration with SIMD, we had to stuff all the operations in one line. We did this to prevent any race conditions or false sharing that would happen with parallelization. Even though the Hive's machine have 8 threads, they are hyperthreaded, and the computer architecture is really just 4 cores. Hyperthreading makes it so that the 2 threads in a core would compete for data, so we catiously chose to make it run on 4 threads instead. This gives us a total speedup of 5X compared to `dumbpy`, sometimes 5.1X if lucky!
 
 ```c
 double *res_pointer = result->data[0];
@@ -157,7 +155,6 @@ for (int i = 0; i < mat1->rows * mat1->cols / 16 * 16; i += 16) {
 for (int i = mat1->rows * mat1->cols / 16 * 16; i < mat1->rows * mat1->cols; i++) {
     *(res_pointer + i) = *(mat1_pointer + i) + *(mat2_pointer + i); 
 }
-return 0;
 ```
 
 #### Slicing Performance
@@ -169,7 +166,6 @@ if (mat1->rows < 16 || mat1->cols < 16 || mat1->parent != NULL || mat2->parent !
             result->data[i][j] = mat1->data[i][j] + mat2->data[i][j];  
         }
     }
-    return 0;
 }
 ```
 
@@ -346,7 +342,6 @@ if (mat1->rows < blocksize || mat1->cols < blocksize || mat2->rows < blocksize |
     for (int i = 0; i < mat1->rows * mat2->cols; i++) {
         *(result->data[0] + i) = *(data + i);                
     }
-    return 0;
 }
 
 #pragma omp parallel for num_threads(4)

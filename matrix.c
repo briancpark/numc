@@ -315,6 +315,7 @@ int sub_matrix(matrix *result, matrix *mat1, matrix *mat2) {
 inline int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
     /* TODO: YOUR CODE HERE */
     if ((result->rows == mat1->rows) && (result->cols == mat2->cols) && (mat1->cols == mat2->rows)) { 
+        
         double *data = (double*) calloc(mat1->rows * mat2->cols, sizeof(double));
         if (data == NULL) {
             PyErr_SetString(PyExc_RuntimeError, "Memory allocation failed!");
@@ -326,9 +327,9 @@ inline int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
 
         if (mat1->rows < blocksize || mat1->cols < blocksize || mat2->rows < blocksize || mat2->cols < blocksize || mat1->parent != NULL || mat2->parent != NULL) {
             #pragma omp parallel for num_threads(4)
-            for (int j = 0; j < mat2->cols; j++) {
-                for (int k = 0; k < mat2->rows; k++) {
-                    for (int i = 0; i < mat1->rows; i++) {
+            for (int i = 0; i < mat1->rows; i++) {
+                for (int j = 0; j < mat2->cols; j++) {
+                    for (int k = 0; k < mat2->rows; k++) {
                         *(data + (i * mat2->cols) + j) += mat1->data[i][k] * mat2->data[k][j];
                     }
                 }
@@ -337,20 +338,17 @@ inline int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
             return 0;
         }
 
-        
+        #pragma omp parallel for num_threads(4)
         for (int i_blocked = 0; i_blocked < mat1->rows; i_blocked += blocksize) {
-            #pragma omp parallel for num_threads(4)
             for (int j_blocked = 0; j_blocked < mat2->cols; j_blocked += blocksize) {
                 for (int k_blocked = 0; k_blocked < mat2->rows; k_blocked += blocksize) {
                     for (int i = i_blocked; i < (i_blocked + blocksize) && i < mat1->rows; i++) { 
-                        //_mm_prefetch(data + (i * mat2->cols), _MM_HINT_T1);
                         for (int j = j_blocked; j < j_blocked + blocksize && j < mat2->cols / 16 * 16; j += 16) {
-                            
                             __m256d c0 = _mm256_loadu_pd(data + (i * mat2->cols) + j);
                             __m256d c1 = _mm256_loadu_pd(data + (i * mat2->cols) + j + 4);
                             __m256d c2 = _mm256_loadu_pd(data + (i * mat2->cols) + j + 8);
                             __m256d c3 = _mm256_loadu_pd(data + (i * mat2->cols) + j + 12);
-                            
+
                             for (int k = k_blocked; k < k_blocked + blocksize && k < mat2->rows; k++) {                           
                                 c0 = _mm256_fmadd_pd(_mm256_broadcast_sd(mat1->data[i] + k), _mm256_loadu_pd(mat2->data[k] + j), c0);
                                 c1 = _mm256_fmadd_pd(_mm256_broadcast_sd(mat1->data[i] + k), _mm256_loadu_pd(mat2->data[k] + j + 4), c1);
@@ -378,6 +376,7 @@ inline int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
         }
     
         /*
+        double *result_pointer = result->data[0];
         #pragma omp parallel for num_threads(4)
         for (int i = 0; i < mat1->rows * mat2->cols / 16 * 16; i += 16) {
             _mm256_storeu_pd(result_pointer + i, _mm256_loadu_pd(data + i));
@@ -417,24 +416,11 @@ int pow_matrix(matrix *result, matrix *mat, int pow) {
         //Temps needed to be made in order to prevent writing over existing matrices.
         //matrix *ret = NULL;
         //allocate_matrix(&ret, mat->rows, mat->cols);
-
-        double *result_pointer = result->data[0];
-        double *mat_pointer = mat->data[0];
-
-        if (pow == 1) {
-            memcpy(result_pointer, mat_pointer, mat->rows * mat->cols * sizeof(double));
-            return 0;
-        }
-
         #pragma omp parallel for num_threads(4)
         for (int i = 0; i < result->rows; i++) {
-            result->data[i][i] = 1.0;
+            set(result, i, i, 1);
         }
-        
-        if (pow == 0) {
-            return 0;
-        }
-
+         
         //Deep copy matrix data
         matrix *A = NULL;
         allocate_matrix(&A, mat->rows, mat->cols);
@@ -457,8 +443,8 @@ int pow_matrix(matrix *result, matrix *mat, int pow) {
             *(A_pointer + i) = *(mat_pointer + i);
         }
         */
-        
         memcpy(A->data[0], mat->data[0], A->rows * A->cols * sizeof(double));
+
         while (pow > 0) {
             if (pow & 1) {
                 mul_matrix(result, result, A);

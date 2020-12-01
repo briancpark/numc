@@ -214,16 +214,10 @@ void fill_matrix(matrix *mat, double val) {
     /* TODO: YOUR CODE HERE */
     int rows = mat->rows;
     int cols = mat->cols;
-    /*
     for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
             mat->data[i][j] = val;
         }
-    }
-    */
-    #pragma omp parallel for num_threads(4)
-    for (int i = 0; i < rows * cols; i++) {
-        *(mat->data[0] + i) = val;
     }
 }
 

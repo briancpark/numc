@@ -500,6 +500,7 @@ PyObject *Matrix61c_pow(Matrix61c *self, PyObject *pow, PyObject *optional) {
     int pow_error = pow_matrix(power, self->mat, n);
 
     if (pow_error) {
+        PyErr_SetString(PyExc_RuntimeError, "Runtime Error!");
         deallocate_matrix(power);
         return NULL;
     }
@@ -536,7 +537,7 @@ PyObject *Matrix61c_set_value(Matrix61c *self, PyObject* args) {
     /* TODO: YOUR CODE HERE */
     if (self == NULL || args == NULL) {
         PyErr_SetString(PyExc_RuntimeError, "Arguments are null!");
-        return Py_None;
+        return NULL;
     }
 
     PyObject *rows = NULL;
@@ -548,12 +549,12 @@ PyObject *Matrix61c_set_value(Matrix61c *self, PyObject* args) {
         // if i and j are not integers, or if val is not a float or int.
         if (!PyLong_Check(rows) || !PyLong_Check(cols)) {
             PyErr_SetString(PyExc_TypeError, "Indices are not integers!");
-            return Py_None;
+            return NULL;
         } 
         
         if (!PyLong_Check(val) && !PyFloat_Check(val)) {
             PyErr_SetString(PyExc_TypeError, "Value is not an integer or floating point number!");
-            return Py_None;
+            return NULL;
         }
 
         if ((PyLong_AsLong(rows) >= self->mat->rows) || 
@@ -561,17 +562,13 @@ PyObject *Matrix61c_set_value(Matrix61c *self, PyObject* args) {
             (PyLong_AsLong(cols) >= self->mat->cols) || 
             (PyLong_AsLong(cols) < 0)) {
             PyErr_SetString(PyExc_IndexError, "Indices out of range!");
-            return Py_None;
-        }
-        if (PyLong_Check(val)) {
-            set(self->mat, (int) PyLong_AsLong(rows), (int) PyLong_AsLong(cols), PyLong_AsLong(val));
-            return Py_None;    
+            return NULL;
         }
         set(self->mat, (int) PyLong_AsLong(rows), (int) PyLong_AsLong(cols), PyFloat_AsDouble(val));
-        return Py_None;
+        return Py_None;    
     } else {
         PyErr_SetString(PyExc_TypeError, "Incorrect number of arguements!");
-        return Py_None;
+        return NULL;
     }
 }
 
@@ -776,8 +773,8 @@ PyObject *Matrix61c_subscript(Matrix61c* self, PyObject* key) {
                 return NULL;
             }
         } else {
-            //Throw an error here? Ask TA
-            //return NULL;
+            PyErr_SetString(PyExc_TypeError, "Invalid arguments!");
+            return NULL;
         }
 
         if (PySlice_Check(col_slice)) {
@@ -801,8 +798,8 @@ PyObject *Matrix61c_subscript(Matrix61c* self, PyObject* key) {
                 return NULL;
             }
         }  else {
-            //Throw an error here? Ask TA
-            //return NULL;
+            PyErr_SetString(PyExc_TypeError, "Invalid arguments!");
+            return NULL;
         }
 
         if ((PyLong_Check(row_slice) && PyLong_Check(col_slice)) || 
@@ -1000,7 +997,8 @@ int Matrix61c_set_subscript(Matrix61c* self, PyObject *key, PyObject *v) {
             row_start = PyLong_AsLong(row_slice);
             row_stop = row_start + 1;
         } else {
-
+            PyErr_SetString(PyExc_TypeError, "Invalid arguments!");
+            return -1;
         }
 
         if (PySlice_Check(col_slice)) {
@@ -1018,7 +1016,8 @@ int Matrix61c_set_subscript(Matrix61c* self, PyObject *key, PyObject *v) {
             col_start = PyLong_AsLong(col_slice);
             col_stop = col_start + 1;
         } else {
-
+            PyErr_SetString(PyExc_TypeError, "Invalid arguments!");
+            return -1;
         }
 
         //Handle all the various slicing here!

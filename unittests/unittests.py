@@ -9,7 +9,7 @@ Hint: use dp_mc_matrix to generate dumbpy and numc matrices with the same data a
 
 ### Global variables
 fuzz = 3500
-fuzz_rep = 100
+fuzz_rep = 10
 scale = 4
 ### DANGEROUS CHANGE WITH CAUTION
 
@@ -559,6 +559,66 @@ class TestSet(TestCase):
         del nc_mat3
 
         del val_matrix1
+    
+    def test_errors_set(self):
+        dp_mat, nc_mat = rand_dp_nc_matrix(2, 2, seed=0)
+        with self.assertRaises(TypeError):
+            dp_mat.set(1, 4.2, 1)
+        with self.assertRaises(TypeError):
+            nc_mat.set(1, 4.2, 1)
+        with self.assertRaises(TypeError):
+            dp_mat.set(dp_mat, 1, 1)
+        with self.assertRaises(TypeError):
+            nc_mat.set(nc_mat, 1, 1)
+        with self.assertRaises(TypeError):
+            dp_mat.set(1, 1, dp_mat)
+        with self.assertRaises(TypeError):
+            nc_mat.set(1, 1, nc_mat)
+        dp_mat.set(1, 1, 1)
+        nc_mat.set(1, 1, 1)
+        dp_mat.set(1, 1, 1.123)
+        nc_mat.set(1, 1, 1.123)
+        self.assertEqual(nc_mat, dp_mat)
+        with self.assertRaises(IndexError):
+            dp_mat.set(4, 1, 0.1)
+        with self.assertRaises(IndexError):
+            nc_mat.set(4, 1, 0.1)
+        with self.assertRaises(IndexError):
+            dp_mat.set(5, 1, 0.1)
+        with self.assertRaises(IndexError):
+            nc_mat.set(5, 1, 0.1)
+        with self.assertRaises(IndexError):
+            dp_mat.set(1, 4, 0.1)
+        with self.assertRaises(IndexError):
+            nc_mat.set(1, 4, 0.1)
+        with self.assertRaises(IndexError):
+            dp_mat.set(1, 5, 0.1)
+        with self.assertRaises(IndexError):
+            nc_mat.set(1, 5, 0.1)
+        with self.assertRaises(IndexError):
+            dp_mat.set(-4, 1, 0.1)
+        with self.assertRaises(IndexError):
+            nc_mat.set(-4, 1, 0.1)
+        with self.assertRaises(IndexError):
+            dp_mat.set(-5, 1, 0.1)
+        with self.assertRaises(IndexError):
+            nc_mat.set(-5, 1, 0.1)
+        with self.assertRaises(IndexError):
+            dp_mat.set(1, -4, 0.1)
+        with self.assertRaises(IndexError):
+            nc_mat.set(1, -4, 0.1)
+        with self.assertRaises(IndexError):
+            dp_mat.set(1, -5, 0.1)
+        with self.assertRaises(IndexError):
+            nc_mat.set(1, -5, 0.1)
+        with self.assertRaises(TypeError):
+            dp_mat.set(1, -5)
+        with self.assertRaises(TypeError):
+            nc_mat.set(1, -5)
+        with self.assertRaises(TypeError):
+            dp_mat.set()
+        with self.assertRaises(TypeError):
+            nc_mat.set()
 
 class TestSlice(TestCase):
     def test_spec1_slice(self):
@@ -740,17 +800,20 @@ class TestSlice(TestCase):
             dp_mat[1, -1]
         with self.assertRaises(IndexError):
             nc_mat[1, -1]
-        #Ask on piazza about these weird edge cases
-        #with self.assertRaises(TypeError):
-        #dp_mat[1, None]
-        #dp_mat[None, 1]
-        #print(dp_mat[dp_mat, 1])
-        #print(dp_mat[None, 1])
-        #print(nc_mat[nc_mat, 1])
-        #print(nc_mat[None, 1])
         
-        #with self.assertRaises(ValueError):
-        #    nc_mat[1, nc_mat]
+        #weird type error testing here. Confirmed on piazza
+        with self.assertRaises(TypeError):
+            dp_mat[1, None]
+        with self.assertRaises(TypeError):
+            dp_mat[None, 1]
+        with self.assertRaises(TypeError):
+            dp_mat[dp_mat, 1]
+        with self.assertRaises(TypeError):
+            nc_mat[1, None]
+        with self.assertRaises(TypeError):
+            nc_mat[None, 1]
+        with self.assertRaises(TypeError):
+            nc_mat[nc_mat, 1]
 
         self.assertEqual(dp_mat[:123], nc_mat[:123])
         with self.assertRaises(ValueError):
@@ -949,7 +1012,44 @@ class TestSlice(TestCase):
             dp_mat[1:2:-2]
         with self.assertRaises(ValueError):
             nc_mat[1:2:-2]
-        
+    
+    #Test basic operations with slices, ignore speed
+    def test_add_slice(self):
+        dp_mat1, nc_mat1 = rand_dp_nc_matrix(4, 4, seed=0)
+        dp_mat2, nc_mat2 = rand_dp_nc_matrix(4, 4, seed=1)
+        dp_mat1 = dp_mat1[1:3, 2:4] 
+        dp_mat2 = dp_mat2[1:3, 2:4] 
+        nc_mat1 = nc_mat1[1:3, 2:4] 
+        nc_mat2 = nc_mat2[1:3, 2:4] 
+        is_correct, speed_up = compute([dp_mat1, dp_mat2], [nc_mat1, nc_mat2], "add")
+        self.assertTrue(is_correct)
+        print_speedup(speed_up)
+    
+    def test_sub_slice(self):
+        dp_mat1, nc_mat1 = rand_dp_nc_matrix(4, 4, seed=0)
+        dp_mat2, nc_mat2 = rand_dp_nc_matrix(4, 4, seed=1)
+        dp_mat1 = dp_mat1[1:3, 2:4] 
+        dp_mat2 = dp_mat2[1:3, 2:4] 
+        nc_mat1 = nc_mat1[1:3, 2:4] 
+        nc_mat2 = nc_mat2[1:3, 2:4] 
+        is_correct, speed_up = compute([dp_mat1, dp_mat2], [nc_mat1, nc_mat2], "sub")
+        self.assertTrue(is_correct)
+        print_speedup(speed_up)
+
+
+    def test_mul_slice(self):
+        dp_mat1, nc_mat1 = rand_dp_nc_matrix(4, 4, seed=0)
+        dp_mat2, nc_mat2 = rand_dp_nc_matrix(4, 4, seed=1)
+        dp_mat1 = dp_mat1[1:3, 2:4] 
+        dp_mat2 = dp_mat2[1:3, 2:4] 
+        nc_mat1 = nc_mat1[1:3, 2:4] 
+        nc_mat2 = nc_mat2[1:3, 2:4] 
+        is_correct, speed_up = compute([dp_mat1, dp_mat2], [nc_mat1, nc_mat2], "mul")
+        self.assertTrue(is_correct)
+        print_speedup(speed_up)
+
+
+
 
 class TestSliceSet(TestCase):
     def test_slice_set_error(self):

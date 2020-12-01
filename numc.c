@@ -874,6 +874,10 @@ int Matrix61c_set_subscript(Matrix61c* self, PyObject *key, PyObject *v) {
             }
 
             for (int j = 0; j < (int) PyList_Size(v); j++) {
+                if (!PyFloat_Check(PyList_GetItem(v, j)) && !PyLong_Check(PyList_GetItem(v, j))) {
+                    PyErr_SetString(PyExc_ValueError, "Value is not valid!");
+                    return -1;
+                }
                 set(self->mat, PyLong_AsLong(key), j, PyFloat_AsDouble(PyList_GetItem(v, j)));
             }
         } else {
@@ -920,11 +924,19 @@ int Matrix61c_set_subscript(Matrix61c* self, PyObject *key, PyObject *v) {
                 return -1;
             } else if (self->mat->rows == 1) {
                 for (int i = start; i < stop; i++) {
+                    if (!PyFloat_Check(PyList_GetItem(v, i - start)) && !PyLong_Check(PyList_GetItem(v, i - start))) {
+                        PyErr_SetString(PyExc_ValueError, "Value is not valid!");
+                        return -1;
+                    }
                     set(self->mat, 0, i, PyFloat_AsDouble(PyList_GetItem(v, i - start)));
                 }
             } else {
                 //Case for col vector 
                 for (int i = start; i < stop; i++) {
+                    if (!PyFloat_Check(PyList_GetItem(v, i - start)) && !PyLong_Check(PyList_GetItem(v, i - start))) {
+                        PyErr_SetString(PyExc_ValueError, "Value is not valid!");
+                        return -1;
+                    }
                     set(self->mat, i, 0, PyFloat_AsDouble(PyList_GetItem(v, i - start)));
                 }
             }
@@ -941,6 +953,10 @@ int Matrix61c_set_subscript(Matrix61c* self, PyObject *key, PyObject *v) {
                     return -1;
                 }
                 for (int j = 0; j < self->mat->cols; j++) {
+                    if (!PyFloat_Check(PyList_GetItem(PyList_GetItem(v, i - start), j)) && !PyLong_Check(PyList_GetItem(PyList_GetItem(v, i - start), j))) {
+                        PyErr_SetString(PyExc_ValueError, "Value is not valid!");
+                        return -1;
+                    }
                     set(self->mat, i, j, PyFloat_AsDouble(PyList_GetItem(PyList_GetItem(v, i - start), j)));
                 }
             }
@@ -1034,7 +1050,7 @@ int Matrix61c_set_subscript(Matrix61c* self, PyObject *key, PyObject *v) {
                 PyErr_SetString(PyExc_IndexError, "Indices out of range!");
                 return -1;
             }
-        } else if (PyList_Check(PyList_GetItem(v, 0))) {
+        } else if (PyList_Check(v) && PyList_Check(PyList_GetItem(v, 0))) {
             //Slicing replacement with 2d array
             if (row_stop - row_start != PyList_Size(v)) {
                 PyErr_SetString(PyExc_ValueError, "Value is not valid!");
@@ -1057,6 +1073,10 @@ int Matrix61c_set_subscript(Matrix61c* self, PyObject *key, PyObject *v) {
             if (PyList_Size(v) == col_stop - col_start && row_stop - row_start == 1) {
                 int j = 0;
                 for (int i = col_start; i < col_stop - col_start; i++) {
+                    if (!PyFloat_Check(PyList_GetItem(v, j)) && !PyLong_Check(PyList_GetItem(v, j))) {
+                        PyErr_SetString(PyExc_ValueError, "Value is not valid!");
+                        return -1;
+                    }
                     set(self->mat, row_start, i,  PyFloat_AsDouble(PyList_GetItem(v, j)));
                     j++;
                 }
@@ -1064,9 +1084,16 @@ int Matrix61c_set_subscript(Matrix61c* self, PyObject *key, PyObject *v) {
             } else if (PyList_Size(v) == row_stop - row_start && col_stop - col_start == 1) {
                 int j = 0;
                 for (int i = row_start; i < row_stop - row_start; i++) {
+                    if (!PyFloat_Check(PyList_GetItem(v, j)) && !PyLong_Check(PyList_GetItem(v, j))) {
+                        PyErr_SetString(PyExc_ValueError, "Value is not valid!");
+                        return -1;
+                    }
                     set(self->mat, i, col_start, PyFloat_AsDouble(PyList_GetItem(v, j)));
                     j++;
                 }
+            } else {
+                PyErr_SetString(PyExc_ValueError, "Value is not valid!");
+                return -1;
             }
         } else {
             //Error handling here
@@ -1074,7 +1101,7 @@ int Matrix61c_set_subscript(Matrix61c* self, PyObject *key, PyObject *v) {
             return -1;
         }
     } else {
-        //A null case.... handle an error here later.
+        PyErr_SetString(PyExc_TypeError, "Value is not valid!");
         return -1;
     }
     return 0;

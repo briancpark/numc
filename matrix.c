@@ -227,7 +227,7 @@ void fill_matrix(matrix *mat, double val) {
  * Store the result of adding mat1 and mat2 to `result`.
  * Return 0 upon success and a nonzero value upon failure.
  */
-int add_matrix(matrix *result, matrix *mat1, matrix *mat2) {
+inline int add_matrix(matrix *result, matrix *mat1, matrix *mat2) {
     /* TODO: YOUR CODE HERE */
     if ((result->rows == mat1->rows && mat1->rows == mat2->rows) && 
         (result->cols == mat1->cols && mat1->cols == mat2->cols)) {
@@ -266,7 +266,7 @@ int add_matrix(matrix *result, matrix *mat1, matrix *mat2) {
  * Store the result of subtracting mat2 from mat1 to `result`.
  * Return 0 upon success and a nonzero value upon failure.
  */
-int sub_matrix(matrix *result, matrix *mat1, matrix *mat2) {
+inline int sub_matrix(matrix *result, matrix *mat1, matrix *mat2) {
     /* TODO: YOUR CODE HERE */
     if ((result->rows == mat1->rows && mat1->rows == mat2->rows) && 
         (result->cols == mat1->cols && mat1->cols == mat2->cols)) {
@@ -395,7 +395,7 @@ inline int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
  * Return 0 upon success and a nonzero value upon failure.
  * Remember that pow is defined with matrix multiplication, not element-wise multiplication.
  */
-int pow_matrix(matrix *result, matrix *mat, int pow) {
+inline int pow_matrix(matrix *result, matrix *mat, int pow) {
     /* TODO: YOUR CODE HERE */
     // Divide and conquer algorithm inspired from https://www.hackerearth.com/practice/notes/matrix-exponentiation-1/ 
     if (pow < 0) {
@@ -476,7 +476,7 @@ int pow_matrix(matrix *result, matrix *mat, int pow) {
  * Store the result of element-wise negating mat's entries to `result`.
  * Return 0 upon success and a nonzero value upon failure.
  */
-int neg_matrix(matrix *result, matrix *mat) {
+inline int neg_matrix(matrix *result, matrix *mat) {
     if ((result->rows == mat->rows) && (result->cols == mat->cols)) {
         if (mat->rows < 16 || mat->cols < 16 || mat->parent != NULL) {
             for (int i = 0; i < mat->rows; i++) {
@@ -513,7 +513,7 @@ int neg_matrix(matrix *result, matrix *mat) {
  * Store the result of taking the absolute value element-wise to `result`.
  * Return 0 upon success and a nonzero value upon failure.
  */
-int abs_matrix(matrix *result, matrix *mat) {
+inline int abs_matrix(matrix *result, matrix *mat) {
     /* TODO: YOUR CODE HERE */
     if ((result->rows == mat->rows) && (result->cols == mat->cols)) {
         if (mat->rows < 16 || mat->cols < 16 || mat->parent != NULL) {

@@ -423,7 +423,6 @@ inline int pow_matrix(matrix *result, matrix *mat, int pow) {
         /*
         double *A_pointer = A->data[0];
         double *mat_pointer = mat->data[0];
-
         //memcopy
         #pragma omp parallel for num_threads(4)
         for (int i = 0; i < result->rows * result->cols / 16 * 16; i += 16) {
@@ -450,7 +449,6 @@ inline int pow_matrix(matrix *result, matrix *mat, int pow) {
         /*
         double *result_pointer = result->data[0];
         double *ret_pointer = ret->data[0];
-
         #pragma omp parallel for num_threads(4)
         for (int i = 0; i < result->rows * result->cols / 16 * 16; i += 16) {
             _mm256_storeu_pd(result_pointer + i, _mm256_loadu_pd(ret_pointer + i));

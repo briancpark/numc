@@ -369,20 +369,6 @@ inline int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
             }
         }
     
-        /*
-        double *result_pointer = result->data[0];
-        #pragma omp parallel for num_threads(4)
-        for (int i = 0; i < mat1->rows * mat2->cols / 16 * 16; i += 16) {
-            _mm256_storeu_pd(result_pointer + i, _mm256_loadu_pd(data + i));
-            _mm256_storeu_pd(result_pointer + i + 4, _mm256_loadu_pd(data + i + 4));
-            _mm256_storeu_pd(result_pointer + i + 8, _mm256_loadu_pd(data + i + 8));
-            _mm256_storeu_pd(result_pointer + i + 12, _mm256_loadu_pd(data + i + 12));
-        }
-        #pragma omp parallel for num_threads(4)
-        for (int i = mat1->rows * mat2->cols / 16 * 16; i < mat1->rows * mat2->cols; i++) {
-            *(result_pointer + i) = *(data + i);
-        }
-        */
         memcpy(result_pointer, data, result->rows * result->cols * sizeof(double));
         free(data);
         return 0;
@@ -406,10 +392,6 @@ int pow_matrix(matrix *result, matrix *mat, int pow) {
         PyErr_SetString(PyExc_TypeError, "Matrix is not square!");
         return -1;
     } else {
-        //Make a copy of matrix
-        //Temps needed to be made in order to prevent writing over existing matrices.
-        //matrix *ret = NULL;
-        //allocate_matrix(&ret, mat->rows, mat->cols);
         #pragma omp parallel for num_threads(4)
         for (int i = 0; i < result->rows; i++) {
             set(result, i, i, 1);
@@ -418,54 +400,19 @@ int pow_matrix(matrix *result, matrix *mat, int pow) {
         //Deep copy matrix data
         matrix *A = NULL;
         allocate_matrix(&A, mat->rows, mat->cols);
-
-        //Removing this causes make test to fail, but might not even matter?
-        /*
-        double *A_pointer = A->data[0];
-        double *mat_pointer = mat->data[0];
-        //memcopy
-        #pragma omp parallel for num_threads(4)
-        for (int i = 0; i < result->rows * result->cols / 16 * 16; i += 16) {
-            _mm256_storeu_pd(A_pointer + i, _mm256_loadu_pd(mat_pointer + i));
-            _mm256_storeu_pd(A_pointer + i + 4, _mm256_loadu_pd(mat_pointer + i + 4));
-            _mm256_storeu_pd(A_pointer + i + 8, _mm256_loadu_pd(mat_pointer + i + 8));
-            _mm256_storeu_pd(A_pointer + i + 12, _mm256_loadu_pd(mat_pointer + i + 12));
-        }
-        #pragma omp parallel for num_threads(4)
-        for (int i = result->rows * result->cols / 16 * 16; i < result->rows * result->cols; i++) {
-            *(A_pointer + i) = *(mat_pointer + i);
-        }
-        */
+        A->parent = mat->parent; //Copy the parent to switch to naive case in mul
         memcpy(A->data[0], mat->data[0], A->rows * A->cols * sizeof(double));
 
         while (pow > 0) {
             if (pow & 1) {
-                mul_matrix(result, result, A);
+                mul_matrix(result, A, result);
             } 
             mul_matrix(A, A, A);
             pow = pow / 2;
         }
 
-        /*
-        double *result_pointer = result->data[0];
-        double *ret_pointer = ret->data[0];
-        #pragma omp parallel for num_threads(4)
-        for (int i = 0; i < result->rows * result->cols / 16 * 16; i += 16) {
-            _mm256_storeu_pd(result_pointer + i, _mm256_loadu_pd(ret_pointer + i));
-            _mm256_storeu_pd(result_pointer + i + 4, _mm256_loadu_pd(ret_pointer + i + 4));
-            _mm256_storeu_pd(result_pointer + i + 8, _mm256_loadu_pd(ret_pointer + i + 8));
-            _mm256_storeu_pd(result_pointer + i + 12, _mm256_loadu_pd(ret_pointer + i + 12));
-        }
-        #pragma omp parallel for num_threads(4)
-        for (int i = result->rows * result->cols / 16 * 16; i < result->rows * result->cols; i++) {
-            *(result_pointer + i) = *(ret_pointer + i);
-        }
-        */
-        //memcpy(result->data[0], result->data[0], result->rows * result->cols * sizeof(double));
-
-        //deallocate_matrix(ret);
+        A->parent = NULL;
         deallocate_matrix(A);
-        
         return 0;
     }
 }
@@ -534,7 +481,7 @@ int abs_matrix(matrix *result, matrix *mat) {
             _mm256_storeu_pd(res_pointer + i + 8, _mm256_max_pd(_mm256_sub_pd(zero_vector, _mm256_loadu_pd(mat_pointer + i + 8)), _mm256_loadu_pd(mat_pointer + i + 8)));
             _mm256_storeu_pd(res_pointer + i + 12, _mm256_max_pd(_mm256_sub_pd(zero_vector, _mm256_loadu_pd(mat_pointer + i + 12)), _mm256_loadu_pd(mat_pointer + i + 12)));
         }
-        
+           
         //Tail Case
         #pragma omp parallel for num_threads(4)
         for (int i = mat->rows * mat->cols / 16 * 16; i < mat->rows * mat->cols; i++) {  
@@ -542,6 +489,5 @@ int abs_matrix(matrix *result, matrix *mat) {
         }
         return 0;
     }
-
     return -1;
 }

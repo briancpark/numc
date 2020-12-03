@@ -1,4 +1,4 @@
-# numc
+# [numc](https://cs61c.org/fa20/projects/proj4/)
 Kaelyn Kim, Brian Park
 
 Here's what I did in project 4:
@@ -11,7 +11,7 @@ Implemented various functions. There were some conceptual challenges in understa
 The very first function we implemented. In order to understand this and the spec inside and out, we took the time to carefully implement everything before moving on to other function. An important design choice was to use a double pointer array to properly address and call on 2D matrices. It makes sense to do so, and made slicing implementation much more intuitive and less of a hassle. Later we optimized this in Task 4.
 
 ### `int allocate_matrix_ref(matrix **mat, matrix *from, int row_offset, int col_offset, int rows, int cols)`
-Understanding `allocate_matrix()` allowed us to proceed further to this function. It turns out this was related to slicing. We had to come back later and fix bugs related to pointers. For the longest time, Brian was stuck up on how to shift pointers around and weird bugs would happen. After Brian rigorously debugged in `cgdb`, he found the pointers could be elegantly be shifted with:
+Understanding `allocate_matrix()` allowed us to proceed further to this function. It turns out this was related to slicing. We had to come back later and fix bugs related to pointers. For the longest time, Brian was stuck up on how to shift pointers around and weird bugs would happen. After Brian rigorously debugged in `gdb`, he found the pointers could be elegantly be shifted with:
 ```c
 (*mat)->data[i] = from->data[i + row_offset] + col_offset;
 ```
@@ -47,11 +47,11 @@ Hardest part were slicing, just due to the sheer complexity and *MANY* different
 We also kept failing `set()` for the most minor and funniest reason. Brian kept improving on slicing functionality, thinking that the autograder's set correctness test robustly tested on it. But turns our it was resolved in OH when Brian realized that `set()` didn't have to be invoked through slicing. It could be invoked through `set(self, i, j, val)` in `Python`. The bug was just a simple error handling between `if (!PyLong_Check(val) || !PyFloat_Check(val))` to `if (!PyLong_Check(val) && !PyFloat_Check(val))` Even though time debugging it was fustrating, at least Brian made sure many slicing errors were handled and properly working. 
 
 ### Testing
-After the core parts of Task 3 was implemented, we could finally move on to testing our `numc` library and ensure that it works correctly. The Python `unittest` framework can be abused through tactical testing and Brian added fuzz, scaling, and fuzz repetition global parameters to scale up the testing when needed. Parameters were catiously set and tuned as Brian almost crashed an entire Hive server for running large tests. Brian also crashed a server for not realizing there was a memory leak in `deallocate_matrix()` and the server would hit 32GB of RAM and then die.
+After the core parts of Task 3 was implemented, we could finally move on to testing our `numc` library and ensure that it works correctly. The Python `unittest` framework can be abused through tactical testing and Brian added fuzz, scaling, and fuzz repetition global parameters to scale up the testing when needed. Parameters were catiously set and tuned as Brian almost crashed an entire Hive server for running large tests. Brian also crashed a server for not realizing there was a memory leak in `deallocate_matrix()` and the server would hit 32GB of RAM and then die. After finishing improving performance, a huge chunk of time was made trying to make more tests and make our `numc` fail, because the more tests you make, the more bugs you find. A lot of bugs were found related to slicing.
 
 For efficient TDD workflow, Brian made a simple bash script to compile and run all tests under the executable 
 ```
-./skiddie.sh
+$ ./skiddie.sh
 ```
 It will do everything in one line, (load `Python` environment, clean, compile, and run `unittests`) because well... Brian is lazy and a script kiddie.
 
@@ -391,7 +391,7 @@ Of course, DGEMM is sill being researched today. This may be the best we can do 
 Even NVIDIA has their own type of Intrinsic-like parallel programming platform,  [CUDA](https://developer.nvidia.com/cuda-toolkit). We've seen it outperform in Deep Learning applications and gaming, and this might be a fun project to learn/do over break now that we have done it successfully in Intel CPU architecture!
 
 ### Power
-Used a simple divide and conquer method noted [here](https://www.hackerearth.com/practice/notes/matrix-exponentiation-1/). The way matrices are powered in this once cuts down coputation by an order of O(log(n)) relative to matrix multiplication. The actual runtime would be O(n^3log(n)), but because parallelism was applied, it's a bit weird to do formal runtime analyis.
+Used a simple divide and conquer method noted [here](https://www.hackerearth.com/practice/notes/matrix-exponentiation-1/). The way matrices are powered in this once cuts down computation by an order of O(log(n)) relative to matrix multiplication. The actual runtime would be O(n^3log(n)), but because parallelism was applied, it's a bit weird to do formal runtime analyis.
 
 #### Matrix Exponentation
 Here is how it's done! Basically we and save computation on an order of log(n) by repeatedly squaring A. 
@@ -400,16 +400,17 @@ Here is how it's done! Basically we and save computation on an order of log(n) b
 
 This in total gives us over 2000X performance!
 
-#### Matrix Decomposition (Draft)
-We can definitely do better. The total runtime of O(n^3log(n)) can be done better, but in tricky cases with high manipulation. We can try to exploit linear algebra by using [spectral decomposition](https://en.wikipedia.org/wiki/Eigendecomposition_of_a_matrix). Basically, a matrix A can be decomposed into A = VDV^-1. Although the computation to get the eigenvalues and eigenvector to compose V, D, and V^-1, it should not even matter in terms of amortized cost and perfomance. Because now you can use regular matrix multiplication to compute A^n. Why? 
+#### Matrix Decomposition
+We can definitely do better... but in certain cases. The total runtime of O(n^3log(n)) can be done better, but in tricky cases with high manipulation. We can try to exploit linear algebra by using [spectral decomposition](https://en.wikipedia.org/wiki/Eigendecomposition_of_a_matrix). Basically, a matrix A can be decomposed into A = VDV^-1. Although the computation to get the eigenvalues and eigenvector to compose V, D, and V^-1, it should not even matter in terms of amortized cost and perfomance. Because now you can use regular matrix multiplication to compute A^n. Why? 
 
 A^n = V * D * V^-1 * V * D * V^-1 * ... * V * D * V^-1 (decomposition is multiplied n times)
+
 A^n = V * D^n * V^-1 (exploit the fact that V^-1 * V = I)
 
-Of course, there are certain cases to consider, cannot be defective and must be diagonalizable, so might be infeasible???.......
+Of course, there are certain cases to consider, cannot be defective and must be diagonalizable, so might be infeasible. It actaully might hurt us in the amortized cost, as we have to calculate the eigenvalues and eigenvectors everytime, which is definitely costly for larger matrices. So the overhead cost of calculating such values might not be worth it. But definitely a cool linear algebra trick to consider!
 
-**This idea is still in progress... write more here**
-
+#### Can We Do Even Better (Conclusion)
+Although we use the subroutine multiply along with repeated squaring, we can probably tune our power better with caching. After all, in the repeated squaring, we are multiplying by the same matrix A many times, so maybe caching can be better optimized to hit and access the same addresses during powers. But, a near 2100X (2200X if lucky) speedup is good enough for now. And we have done it! We have accelerated the naive operations on matrices by a factor of at most 2000X! This is such an amazing achievement and improvement that parallelism offers, and gives full utilization of hardware! Although it is not as fast as `numpy`, we have successfully handled the complexity of C and abstracted it away into a very intuitive library for us to interact with in `Python`. We also see why matrix operations are important when we learn machine learning and graphical processing, so it was very cool to see us make a powerful library from scratch.
 
 ### About the Hive CPUs
 Will be useful in determining optimization choices and constraints.

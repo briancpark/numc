@@ -1015,41 +1015,73 @@ class TestSlice(TestCase):
     
     #Test basic operations with slices, ignore speed
     def test_add_slice(self):
-        dp_mat1, nc_mat1 = rand_dp_nc_matrix(4, 4, seed=0)
-        dp_mat2, nc_mat2 = rand_dp_nc_matrix(4, 4, seed=1)
-        dp_mat1 = dp_mat1[1:3, 2:4] 
-        dp_mat2 = dp_mat2[1:3, 2:4] 
-        nc_mat1 = nc_mat1[1:3, 2:4] 
-        nc_mat2 = nc_mat2[1:3, 2:4] 
+        dp_mat1, nc_mat1 = rand_dp_nc_matrix(100, 150, seed=0)
+        dp_mat2, nc_mat2 = rand_dp_nc_matrix(100, 150, seed=1)
+        dp_mat1 = dp_mat1[50:, 2:52] 
+        dp_mat2 = dp_mat2[50:, 2:52] 
+        nc_mat1 = nc_mat1[50:, 2:52] 
+        nc_mat2 = nc_mat2[50:, 2:52] 
         is_correct, speed_up = compute([dp_mat1, dp_mat2], [nc_mat1, nc_mat2], "add")
         self.assertTrue(is_correct)
-        print_speedup(speed_up)
+        del dp_mat1
+        del dp_mat2
+        del nc_mat1
+        del nc_mat2
     
     def test_sub_slice(self):
-        dp_mat1, nc_mat1 = rand_dp_nc_matrix(4, 4, seed=0)
-        dp_mat2, nc_mat2 = rand_dp_nc_matrix(4, 4, seed=1)
-        dp_mat1 = dp_mat1[1:3, 2:4] 
-        dp_mat2 = dp_mat2[1:3, 2:4] 
-        nc_mat1 = nc_mat1[1:3, 2:4] 
-        nc_mat2 = nc_mat2[1:3, 2:4] 
+        dp_mat1, nc_mat1 = rand_dp_nc_matrix(100, 150, seed=0)
+        dp_mat2, nc_mat2 = rand_dp_nc_matrix(100, 150, seed=1)
+        dp_mat1 = dp_mat1[50:, 2:52] 
+        dp_mat2 = dp_mat2[50:, 2:52] 
+        nc_mat1 = nc_mat1[50:, 2:52] 
+        nc_mat2 = nc_mat2[50:, 2:52] 
         is_correct, speed_up = compute([dp_mat1, dp_mat2], [nc_mat1, nc_mat2], "sub")
         self.assertTrue(is_correct)
-        print_speedup(speed_up)
-
+        del dp_mat1
+        del dp_mat2
+        del nc_mat1
+        del nc_mat2
 
     def test_mul_slice(self):
-        dp_mat1, nc_mat1 = rand_dp_nc_matrix(4, 4, seed=0)
-        dp_mat2, nc_mat2 = rand_dp_nc_matrix(4, 4, seed=1)
-        dp_mat1 = dp_mat1[1:3, 2:4] 
-        dp_mat2 = dp_mat2[1:3, 2:4] 
-        nc_mat1 = nc_mat1[1:3, 2:4] 
-        nc_mat2 = nc_mat2[1:3, 2:4] 
+        dp_mat1, nc_mat1 = rand_dp_nc_matrix(200, 200, seed=0)
+        dp_mat2, nc_mat2 = rand_dp_nc_matrix(200, 200, seed=1)
+        dp_mat1 = dp_mat1[50:150, 50:150] 
+        dp_mat2 = dp_mat2[50:150, 50:150] 
+        nc_mat1 = nc_mat1[50:150, 50:150] 
+        nc_mat2 = nc_mat2[50:150, 50:150] 
         is_correct, speed_up = compute([dp_mat1, dp_mat2], [nc_mat1, nc_mat2], "mul")
         self.assertTrue(is_correct)
-        print_speedup(speed_up)
+        del dp_mat1
+        del dp_mat2
+        del nc_mat1
+        del nc_mat2
 
+    def test_pow_slice(self):
+        dp_mat, nc_mat = rand_dp_nc_matrix(122, 100, seed=0)
+        dp_mat = dp_mat[30:50, 30:50]
+        nc_mat = nc_mat[30:50, 30:50]
+        is_correct, speed_up = compute([dp_mat, 4], [nc_mat, 4], "pow")
+        self.assertTrue(is_correct)
+        del dp_mat
+        del nc_mat
 
+    def test_abs_slice(self):
+        dp_mat, nc_mat = rand_dp_nc_matrix(122, 100, seed=0)
+        dp_mat = dp_mat[30:50, 30:50]
+        nc_mat = nc_mat[30:50, 30:50]
+        is_correct, speed_up = compute([dp_mat], [nc_mat], "abs")
+        self.assertTrue(is_correct)
+        del dp_mat
+        del nc_mat
 
+    def test_neg_slice(self):
+        dp_mat, nc_mat = rand_dp_nc_matrix(122, 100, seed=0)
+        dp_mat = dp_mat[30:50, 30:50]
+        nc_mat = nc_mat[30:50, 30:50]
+        is_correct, speed_up = compute([dp_mat], [nc_mat], "neg")
+        self.assertTrue(is_correct)
+        del dp_mat
+        del nc_mat
 
 class TestSliceSet(TestCase):
     def test_slice_set_error(self):

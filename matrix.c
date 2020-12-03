@@ -400,15 +400,23 @@ int pow_matrix(matrix *result, matrix *mat, int pow) {
         //Deep copy matrix data
         matrix *A = NULL;
         allocate_matrix(&A, mat->rows, mat->cols);
-        A->parent = mat->parent; //Copy the parent to switch to naive case in mul
-        memcpy(A->data[0], mat->data[0], A->rows * A->cols * sizeof(double));
+        if (mat->parent) {
+            A->parent = mat->parent; //Copy the parent to switch to naive case in mul
+            for (int i = 0; i < mat->rows; i++) {
+                for (int j = 0; j < mat->cols; j++) {
+                    A->data[i][j] = mat->data[i][j];
+                }    
+            }
+        } else {
+            memcpy(A->data[0], mat->data[0], A->rows * A->cols * sizeof(double));
+        }
 
         while (pow > 0) {
             if (pow & 1) {
                 mul_matrix(result, A, result);
             } 
             mul_matrix(A, A, A);
-            pow = pow / 2;
+            pow /= 2;
         }
 
         A->parent = NULL;

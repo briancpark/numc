@@ -172,7 +172,6 @@ if (mat1->rows < 16 || mat1->cols < 16 || mat1->parent != NULL || mat2->parent !
 #### Can We Do Even Better? (Conclusion)
 We could certainly optimize it a bit more efficiently by carefully thinking about caches and virtual memory. But this is the best we could come with in terms of performance. 
 
-
 ### Multiply
 This was mainly the hardest part of the project. Although we thought we have mastered matrix multiplication by doing it in RISC-V for project 2, it is even harder trying to parallelize it. There are things you need to consider such as how memory is meticuously handled. We will explain our troubles and difficulty spent debugging through the buildup of how matrix multiplication was sped up. Brian did a *LOT* of research on DGEMM papers. DGEMM stands for **D**ouble-precision, **GE**neral **M**atrix-**M**atrix multiplication. Resources include [Patterson and Hennesy's Computer Organization and Design](https://www.amazon.com/Computer-Organization-Design-RISC-V-Architecture/dp/0128122757), [Nicholas Weaver's 61C - Lecture 18 Spring 2019](https://www.youtube.com/watch?v=ibzkJAkn2_o) [slides](https://inst.eecs.berkeley.edu/~cs61c/sp19/lectures/lec18.pdf), [What Every Programmer Should Know About Memory by Ulrich Drepper](https://akkadia.org/drepper/cpumemory.pdf), and [Matrix Multiplication using SIMD](https://www.youtube.com/watch?v=3rU6BX7w8Tk&list=PLKT8ER2pEV3umVSMwd06LY_eSIX-DnU6A&index=1).
 
@@ -204,7 +203,7 @@ Before we move on, we must first observe why matrix multiplication is such a com
 ![matmul](https://www.mymathtables.com/calculator/matrix/3x3-matrix-formula.png)
 
 #### SIMD
-Again, Intel Intrinsics saves the day with subword parallelism. Fortunately, Patterson and Henessy paints the picture very elegantly in their textbook, as their newest edition includes a buildup of how to improve DGEMM performance with SIMD, cache blocking, and multithreaded parallelism. Unfortunately, the Patterson and Hennessy implementation does not work out of the box, because they only did it for square matrices with dimension of `2^n`, so a tail case needed to be implemented as well. Here is how that looks like with a few more optimizations like loop unrolling as well:
+Again, Intel Intrinsics saves the day with subword parallelism. Fortunately, Patterson and Henessy paints the picture very elegantly in their textbook, as their newest edition includes a buildup of how to improve DGEMM performance with SIMD, cache blocking, and multithreaded parallelism. Unfortunately, the Patterson and Hennessy implementation does not work out of the box, because they only did it for square matrices with dimension of 2^n, so a tail case needed to be implemented as well. Here is how that looks like with a few more optimizations like loop unrolling as well:
 
 ```c
 for (int i = 0; i < mat1->rows; i++) { 
@@ -325,7 +324,7 @@ for (int i = 0; i < mat2->cols; i++) {
     }
 }
 
-int blocksize = 64;
+int blocksize = 32;
 
 if (mat1->rows < blocksize || mat1->cols < blocksize || mat2->rows < blocksize || mat2->cols < blocksize || mat1->parent != NULL || mat2->parent != NULL) {
     omp_set_num_threads(4);

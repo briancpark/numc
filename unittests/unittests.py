@@ -451,7 +451,7 @@ class TestPow(TestCase):
         del dp_mat
         del nc_mat
 
-    def test_identity_pow(self):
+    def test_1_pow(self):
         dp_mat, nc_mat = rand_dp_nc_matrix(100, 100, seed=0)
         self.assertEqual(dp_mat, nc_mat)
         self.assertEqual(dp_mat ** 1, nc_mat)
@@ -460,11 +460,34 @@ class TestPow(TestCase):
 
     def test_identity_pow(self):
         I = dp.Matrix(100, 100)
-        
+
         for i in range(100):
             I.set(i, i, 1)
 
         dp_mat, nc_mat = rand_dp_nc_matrix(100, 100, seed=0)
+        self.assertEqual(dp_mat ** 0, I)
+        self.assertEqual(I, nc_mat ** 0)
+        self.assertEqual(dp_mat ** 0, nc_mat ** 0)
+
+    def test_1_slice_pow(self):
+        dp_mat, nc_mat = rand_dp_nc_matrix(100, 100, seed=0)
+        dp_mat = dp_mat[25:50, 25:50]
+        nc_mat = nc_mat[25:50, 25:50]
+        self.assertEqual(dp_mat, nc_mat)
+        self.assertEqual(dp_mat ** 1, nc_mat)
+        self.assertEqual(dp_mat, nc_mat ** 1)
+        self.assertEqual(dp_mat ** 1, nc_mat ** 1)
+
+    def test_identity_slice_pow(self):
+        I = dp.Matrix(100, 100)
+        I = I[25:50, 25:50]
+        
+        for i in range(25):
+            I.set(i, i, 1)
+
+        dp_mat, nc_mat = rand_dp_nc_matrix(100, 100, seed=0)
+        dp_mat = dp_mat[25:50, 25:50]
+        nc_mat = nc_mat[25:50, 25:50]
         self.assertEqual(dp_mat ** 0, I)
         self.assertEqual(I, nc_mat ** 0)
         self.assertEqual(dp_mat ** 0, nc_mat ** 0)

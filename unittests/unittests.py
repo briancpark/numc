@@ -1192,3 +1192,15 @@ class TestShape(TestCase):
     def test_shape(self):
         dp_mat, nc_mat = rand_dp_nc_matrix(2, 2, seed=0)
         self.assertTrue(dp_mat.shape == nc_mat.shape)
+
+    def test_1d_shape(self):
+        dp_mat, nc_mat = rand_dp_nc_matrix(2, 1, seed=0)
+        self.assertTrue(dp_mat.shape == nc_mat.shape)
+        del dp_mat
+        del nc_mat
+
+        dp_mat, nc_mat = rand_dp_nc_matrix(1, 2, seed=0)
+        self.assertTrue(dp_mat.shape == nc_mat.shape)
+
+        dp_mat, nc_mat = rand_dp_nc_matrix(1, 1, seed=0)
+        self.assertTrue(dp_mat.shape == nc_mat.shape)

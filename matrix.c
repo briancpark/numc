@@ -136,10 +136,21 @@ int allocate_matrix_ref(matrix **mat, matrix *from, int row_offset, int col_offs
         (*mat)->is_1d = 0;
     }
 
-    from->ref_cnt++;
-    (*mat)->ref_cnt = 1;
-    (*mat)->parent = from;
+    //If from's parent is NULL, it is the root
+    if (from->parent == NULL) {
+        from->ref_cnt++;
+        (*mat)->parent = from;
+    } else {
+        //If from's parent is not null, it is a child of parent
+        from->parent->ref_cnt++;
+        (*mat)->parent = from->parent;
+    }
 
+    
+
+    //Ref_cnt does not really matter
+    (*mat)->ref_cnt = 1;
+    
     (*mat)->data = (double**) malloc(sizeof(double*) * rows);
     if ((*mat)->data == NULL) {
         free((*mat));
@@ -171,21 +182,31 @@ int allocate_matrix_ref(matrix **mat, matrix *from, int row_offset, int col_offs
  */
 void deallocate_matrix(matrix *mat) {
     // The process of deallocating is much similar to deallocating/freeing a linked list in C
-    // TEST MORE LATER JUST IN CASE 
     if (mat == NULL) {
         return;
     } else if (mat->parent == NULL && mat->ref_cnt <= 1) {
-        if (mat->data != NULL) {
-            free(mat->data[0]);
-            free(mat->data);
-        }
+        //If mat is the last referencing matrix, free everything
+        free(mat->data[0]);
+        free(mat->data);
         free(mat);
         return;
-    } else if (mat->parent != NULL && mat->parent->ref_cnt <= 1) {
-        deallocate_matrix(mat->parent);
+    } else if (mat->parent != NULL) { // && mat->parent->ref_cnt > 1
+        //If mat is child of the root, then free matrix struct, decrement ref_cnt, and nothing else
+        if (mat->parent->ref_cnt <= 1 ) {
+            free(mat->parent->data[0]);
+            free(mat->parent->data);
+            free(mat->parent);
+            free(mat->data[0]);
+            free(mat->data);
+            free(mat);
+            return;
+        }
+        mat->parent->ref_cnt--;
+        free(mat->data);
         free(mat);
+        return;
     } else {
-        mat->ref_cnt--;
+        return;
     }
 }    
 

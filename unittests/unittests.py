@@ -531,7 +531,29 @@ class TestSet(TestCase):
         del nc_mat3
 
         del val_matrix1
-    
+
+    def test_init_error_set(self):
+        with self.assertRaises(ValueError):
+            a = dp.Matrix(-1, -1)
+        with self.assertRaises(ValueError):
+            a = nc.Matrix(-1, -1)    
+        with self.assertRaises(ValueError):
+            a = dp.Matrix(0, 0)
+        with self.assertRaises(ValueError):
+            a = nc.Matrix(0, 0)
+        with self.assertRaises(ValueError):
+            a = dp.Matrix(-1, -1, 2)
+        with self.assertRaises(ValueError):
+            a = nc.Matrix(-1, -1, 2)    
+        with self.assertRaises(ValueError):
+            a = dp.Matrix(0, 0, 2)
+        with self.assertRaises(ValueError):
+            a = nc.Matrix(0, 0, 2)
+        with self.assertRaises(TypeError):
+            a = nc.Matrix(0, 0.2, 2)
+        with self.assertRaises(TypeError):
+            a = dp.Matrix(0, 0.2, 2)
+
     def test_errors_set(self):
         dp_mat, nc_mat = rand_dp_nc_matrix(2, 2, seed=0)
         with self.assertRaises(TypeError):

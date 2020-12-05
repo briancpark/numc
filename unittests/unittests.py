@@ -15,7 +15,6 @@ scale = 4
 
 class TestAdd(TestCase):
     def test_small_add(self):
-        # TODO: YOUR CODE HERE
         dp_mat1, nc_mat1 = rand_dp_nc_matrix(2, 2, seed=0)
         dp_mat2, nc_mat2 = rand_dp_nc_matrix(2, 2, seed=1)
         is_correct, speed_up = compute([dp_mat1, dp_mat2], [nc_mat1, nc_mat2], "add")
@@ -27,7 +26,6 @@ class TestAdd(TestCase):
         del nc_mat2
 
     def test_medium_add(self):
-        # TODO: YOUR CODE HERE
         dp_mat1, nc_mat1 = rand_dp_nc_matrix(10, 100, seed=0)
         dp_mat2, nc_mat2 = rand_dp_nc_matrix(10, 100, seed=1)
         is_correct, speed_up = compute([dp_mat1, dp_mat2], [nc_mat1, nc_mat2], "add")
@@ -39,7 +37,6 @@ class TestAdd(TestCase):
         del nc_mat2
 
     def test_large_add(self):
-        # TODO: YOUR CODE HERE
         dp_mat1, nc_mat1 = rand_dp_nc_matrix(11023, 1241, seed=0)
         dp_mat2, nc_mat2 = rand_dp_nc_matrix(11023, 1241, seed=1)
         is_correct, speed_up = compute([dp_mat1, dp_mat2], [nc_mat1, nc_mat2], "add")
@@ -51,7 +48,6 @@ class TestAdd(TestCase):
         del nc_mat2
 
     def test_fractional_scaling_add(self):
-        print()
         speeds = []
         for n in range(1, scale):
             dp_mat1, nc_mat1 = rand_dp_nc_matrix(10 ** n, 10 ** n, seed=0)
@@ -64,10 +60,9 @@ class TestAdd(TestCase):
             del nc_mat1
             del dp_mat2
             del nc_mat2
-        print("AVERAGE SPEEDUP IS: ", sum(speeds) / len(speeds))
+        print("\nAVERAGE SPEEDUP IS: ", sum(speeds) / len(speeds))
 
     def test_fuzz_add(self):
-        print()
         speeds = []
         for n in range(fuzz_rep): 
             row = np.random.randint(2, fuzz) 
@@ -83,7 +78,7 @@ class TestAdd(TestCase):
             del nc_mat1
             del dp_mat2
             del nc_mat2
-        print("AVERAGE SPEEDUP IS: ", sum(speeds) / len(speeds))
+        print("\nAVERAGE SPEEDUP IS: ", sum(speeds) / len(speeds))
 
     def test_incorrect_dimension_add(self):
         dp_mat1, nc_mat1 = rand_dp_nc_matrix(2, 4, seed=0)
@@ -122,7 +117,6 @@ class TestAdd(TestCase):
             
 class TestSub(TestCase):
     def test_small_sub(self):
-        # TODO: YOUR CODE HERE
         dp_mat1, nc_mat1 = rand_dp_nc_matrix(2, 2, seed=0)
         dp_mat2, nc_mat2 = rand_dp_nc_matrix(2, 2, seed=1)
         is_correct, speed_up = compute([dp_mat1, dp_mat2], [nc_mat1, nc_mat2], "sub")
@@ -134,7 +128,6 @@ class TestSub(TestCase):
         del nc_mat2
 
     def test_medium_sub(self):
-        # TODO: YOUR CODE HERE
         dp_mat1, nc_mat1 = rand_dp_nc_matrix(10, 100, seed=0)
         dp_mat2, nc_mat2 = rand_dp_nc_matrix(10, 100, seed=1)
         is_correct, speed_up = compute([dp_mat1, dp_mat2], [nc_mat1, nc_mat2], "sub")
@@ -146,7 +139,6 @@ class TestSub(TestCase):
         del nc_mat2
 
     def test_large_sub(self):
-        # TODO: YOUR CODE HERE
         dp_mat1, nc_mat1 = rand_dp_nc_matrix(11023, 1241, seed=0)
         dp_mat2, nc_mat2 = rand_dp_nc_matrix(11023, 1241, seed=1)
         is_correct, speed_up = compute([dp_mat1, dp_mat2], [nc_mat1, nc_mat2], "sub")
@@ -171,7 +163,6 @@ class TestSub(TestCase):
             del nc_mat2
 
     def test_fuzz_sub(self):
-        print()
         speeds = []
         for n in range(fuzz_rep):
             row = np.random.randint(2, fuzz)
@@ -187,7 +178,7 @@ class TestSub(TestCase):
             del nc_mat1
             del dp_mat2
             del nc_mat2
-        print("AVERAGE SPEEDUP IS: ", sum(speeds) / len(speeds))
+        print("\nAVERAGE SPEEDUP IS: ", sum(speeds) / len(speeds))
 
     def test_incorrect_dimension_sub(self):
         dp_mat1, nc_mat1 = rand_dp_nc_matrix(2, 4, seed=0)
@@ -209,7 +200,6 @@ class TestSub(TestCase):
 
 class TestAbs(TestCase):
     def test_small_abs(self):
-        # TODO: YOUR CODE HERE
         dp_mat, nc_mat = rand_dp_nc_matrix(2, 2, seed=0)
         is_correct, speed_up = compute([dp_mat], [nc_mat], "abs")
         self.assertTrue(is_correct)
@@ -218,7 +208,6 @@ class TestAbs(TestCase):
         del nc_mat
 
     def test_medium_abs(self):
-        # TODO: YOUR CODE HERE
         dp_mat, nc_mat = rand_dp_nc_matrix(123, 100, seed=0)
         is_correct, speed_up = compute([dp_mat], [nc_mat], "abs")
         self.assertTrue(is_correct)
@@ -227,7 +216,6 @@ class TestAbs(TestCase):
         del nc_mat
 
     def test_large_abs(self):
-        # TODO: YOUR CODE HERE
         dp_mat, nc_mat = rand_dp_nc_matrix(1230, 1200, seed=0)
         is_correct, speed_up = compute([dp_mat], [nc_mat], "abs")
         self.assertTrue(is_correct)
@@ -246,7 +234,6 @@ class TestAbs(TestCase):
             del nc_mat
 
     def test_fuzz_abs(self):
-        print()
         speeds = []
         for n in range(fuzz_rep): 
             row = np.random.randint(2, fuzz) 
@@ -259,11 +246,10 @@ class TestAbs(TestCase):
             speeds.append(speed_up)
             del dp_mat
             del nc_mat
-        print("AVERAGE SPEEDUP IS: ", sum(speeds) / len(speeds))
+        print("\nAVERAGE SPEEDUP IS: ", sum(speeds) / len(speeds))
 
 class TestNeg(TestCase):
     def test_small_neg(self):
-        # TODO: YOUR CODE HERE
         dp_mat, nc_mat = rand_dp_nc_matrix(2, 2, seed=0)
         is_correct, speed_up = compute([dp_mat], [nc_mat], "neg")
         self.assertTrue(is_correct)
@@ -272,7 +258,6 @@ class TestNeg(TestCase):
         del nc_mat
 
     def test_medium_neg(self):
-        # TODO: YOUR CODE HERE
         dp_mat, nc_mat = rand_dp_nc_matrix(243, 123, seed=0)
         is_correct, speed_up = compute([dp_mat], [nc_mat], "neg")
         self.assertTrue(is_correct)
@@ -281,7 +266,6 @@ class TestNeg(TestCase):
         del nc_mat
 
     def test_large_neg(self):
-        # TODO: YOUR CODE HERE
         dp_mat, nc_mat = rand_dp_nc_matrix(2434, 1223, seed=0)
         is_correct, speed_up = compute([dp_mat], [nc_mat], "neg")
         self.assertTrue(is_correct)
@@ -300,7 +284,6 @@ class TestNeg(TestCase):
             del nc_mat
 
     def test_fuzz_neg(self):
-        print()
         speeds = []
         for n in range(fuzz_rep):
             row = np.random.randint(2, fuzz)
@@ -313,11 +296,10 @@ class TestNeg(TestCase):
             speeds.append(speed_up)
             del dp_mat
             del nc_mat
-        print("AVERAGE SPEEDUP IS: ", sum(speeds) / len(speeds))
+        print("\nAVERAGE SPEEDUP IS: ", sum(speeds) / len(speeds))
 
 class TestMul(TestCase):
     def test_small_mul(self):
-        # TODO: YOUR CODE HERE
         dp_mat1, nc_mat1 = rand_dp_nc_matrix(2, 2, seed=0)
         dp_mat2, nc_mat2 = rand_dp_nc_matrix(2, 2, seed=1)
         is_correct, speed_up = compute([dp_mat1, dp_mat2], [nc_mat1, nc_mat2], "mul")
@@ -329,7 +311,6 @@ class TestMul(TestCase):
         del nc_mat2
     
     def test_medium_mul(self):
-        # TODO: YOUR CODE HERE
         dp_mat1, nc_mat1 = rand_dp_nc_matrix(123, 100, seed=0)
         dp_mat2, nc_mat2 = rand_dp_nc_matrix(100, 321, seed=1)
         is_correct, speed_up = compute([dp_mat1, dp_mat2], [nc_mat1, nc_mat2], "mul")
@@ -341,7 +322,6 @@ class TestMul(TestCase):
         del nc_mat2
 
     def test_large_mul(self):
-        # TODO: YOUR CODE HERE
         dp_mat1, nc_mat1 = rand_dp_nc_matrix(1223, 1100, seed=0)
         dp_mat2, nc_mat2 = rand_dp_nc_matrix(1100, 2321, seed=1)
         is_correct, speed_up = compute([dp_mat1, dp_mat2], [nc_mat1, nc_mat2], "mul")
@@ -366,7 +346,6 @@ class TestMul(TestCase):
             del nc_mat2
 
     def test_fuzz_mul(self):
-        print()
         speeds = []
         for n in range(fuzz_rep):
             x = np.random.randint(2, fuzz)
@@ -382,7 +361,7 @@ class TestMul(TestCase):
             del nc_mat1
             del dp_mat2
             del nc_mat2
-        print("AVERAGE SPEEDUP IS: ", sum(speeds) / len(speeds))
+        print("\nAVERAGE SPEEDUP IS: ", sum(speeds) / len(speeds))
 
     def test_incorrect_dimension_mul(self):
         dp_mat1, nc_mat1 = rand_dp_nc_matrix(2, 12, seed=0)
@@ -406,14 +385,12 @@ class TestMul(TestCase):
 
 class TestPow(TestCase):
     def test_small_pow(self):
-        # TODO: YOUR CODE HERE
         dp_mat, nc_mat = rand_dp_nc_matrix(2, 2, seed=0)
         is_correct, speed_up = compute([dp_mat, 3], [nc_mat, 3], "pow")
         self.assertTrue(is_correct)
         print_speedup(speed_up)
 
     def test_medium_pow(self):
-        # TODO: YOUR CODE HERE
         dp_mat, nc_mat = rand_dp_nc_matrix(100, 100, seed=0)
         is_correct, speed_up = compute([dp_mat, 10], [nc_mat, 10], "pow")
         self.assertTrue(is_correct)
@@ -422,7 +399,6 @@ class TestPow(TestCase):
         del nc_mat
 
     def test_large_pow(self):
-        # TODO: YOUR CODE HERE
         dp_mat, nc_mat = rand_dp_nc_matrix(500, 500, seed=0)
         is_correct, speed_up = compute([dp_mat, 10], [nc_mat, 10], "pow")
         self.assertTrue(is_correct)
@@ -441,7 +417,6 @@ class TestPow(TestCase):
             del nc_mat
 
     def test_fuzz_pow(self):
-        print()
         speeds = []
         for n in range(fuzz_rep):
             p = np.random.randint(1, fuzz)
@@ -453,7 +428,7 @@ class TestPow(TestCase):
             speeds.append(speed_up)
             del dp_mat
             del nc_mat
-        print("AVERAGE SPEEDUP IS: ", sum(speeds) / len(speeds))
+        print("\nAVERAGE SPEEDUP IS: ", sum(speeds) / len(speeds))
 
     def test_incorrect_dimension_pow(self):
         dp_mat, nc_mat = rand_dp_nc_matrix(100, 120, seed=0)
@@ -478,7 +453,6 @@ class TestPow(TestCase):
 
 class TestGet(TestCase):
     def test_get(self):
-        # TODO: YOUR CODE HERE
         dp_mat, nc_mat = rand_dp_nc_matrix(2, 2, seed=0)
         rand_row = np.random.randint(dp_mat.shape[0])
         rand_col = np.random.randint(dp_mat.shape[1])
@@ -496,7 +470,6 @@ class TestGet(TestCase):
         
 class TestSet(TestCase):
     def test_set(self):
-        # TODO: YOUR CODE HERE
         dp_mat, nc_mat = rand_dp_nc_matrix(2, 2, seed=0)
         rand_row = np.random.randint(dp_mat.shape[0])
         rand_col = np.random.randint(dp_mat.shape[1])
@@ -509,7 +482,6 @@ class TestSet(TestCase):
             rand_row = np.random.randint(dp_mat.shape[0])
             rand_col = np.random.randint(dp_mat.shape[1])
             self.assertEqual(nc_mat.set(rand_row, rand_col, i), dp_mat.set(rand_row, rand_col, i))
-
         self.assertEqual(dp_mat, nc_mat)
 
     def test_init_set(self):
@@ -683,36 +655,36 @@ class TestSlice(TestCase):
         
     def test_piazza_clarification_slice(self):
         dp_mat, nc_mat = rand_dp_nc_matrix(10, 10, seed=0)
-        #int, slice, (int, slice), (slice, int), (slice, slice), or (int, int)
-        #Slice is: int
+        # int, slice, (int, slice), (slice, int), (slice, slice), or (int, int)
+        # Slice is: int
         self.assertEqual(dp_mat[1], nc_mat[1])
         self.assertEqual(dp_mat, nc_mat)
-        #Slice is: slice
+        # Slice is: slice
         self.assertEqual(dp_mat[:], nc_mat[:])
         self.assertEqual(dp_mat[2:4], nc_mat[2:4])
         self.assertEqual(dp_mat, nc_mat)
-        #Slice is: (int, slice)
+        # Slice is: (int, slice)
         self.assertEqual(dp_mat[1, :], nc_mat[1, :])
         self.assertEqual(dp_mat[2, :], nc_mat[2, :])
         self.assertEqual(dp_mat[2, 2:4], nc_mat[2, 2:4])
         self.assertEqual(dp_mat, nc_mat)
-        #Slice is: (slice, int)
+        # Slice is: (slice, int)
         self.assertEqual(dp_mat[:, 2], nc_mat[:, 2])
         self.assertEqual(dp_mat[:, 1], nc_mat[:, 1])
         self.assertEqual(dp_mat[2:4, 2], nc_mat[2:4, 2])
         self.assertEqual(dp_mat, nc_mat)
-        #Slice is: (slice, slice)
+        # Slice is: (slice, slice)
         self.assertEqual(dp_mat[:, :], nc_mat[:, :])
         self.assertEqual(dp_mat[1:3, 2:4], nc_mat[1:3, 2:4])
         self.assertEqual(dp_mat, nc_mat)
-        #Slice is: (int, int)
+        # Slice is: (int, int)
         self.assertEqual(dp_mat[:, 4], nc_mat[:, 4])
         self.assertEqual(dp_mat[1:3, 7], nc_mat[1:3, 7])
         self.assertEqual(dp_mat, nc_mat)
 
     def test_piazza_clarification_error_slice(self):
         dp_mat, nc_mat = rand_dp_nc_matrix(10, 10, seed=0)
-        #int, slice, (int, slice), (slice, int), (slice, slice), or (int, int)
+        # int, slice, (int, slice), (slice, int), (slice, slice), or (int, int)
         with self.assertRaises(TypeError):
             dp_mat[:dp_mat]
         with self.assertRaises(TypeError):
@@ -801,7 +773,7 @@ class TestSlice(TestCase):
         with self.assertRaises(IndexError):
             nc_mat[1, -1]
         
-        #weird type error testing here. Confirmed on piazza
+        # Weird type error testing here. Confirmed on piazza.
         with self.assertRaises(TypeError):
             dp_mat[1, None]
         with self.assertRaises(TypeError):
@@ -839,9 +811,8 @@ class TestSlice(TestCase):
         self.assertEqual(dp_mat[:123, :123], nc_mat[:123, :123])
         self.assertEqual(dp_mat[:-1, :123], nc_mat[:-1, :123])
 
-
         dp_mat, nc_mat = rand_dp_nc_matrix(1, 10, seed=0)
-        #int, slice, (int, slice), (slice, int), (slice, slice), or (int, int)
+        # int, slice, (int, slice), (slice, int), (slice, slice), or (int, int)
         with self.assertRaises(TypeError):
             dp_mat[:dp_mat]
         with self.assertRaises(TypeError):
@@ -903,7 +874,7 @@ class TestSlice(TestCase):
             nc_mat[123:]
 
         dp_mat, nc_mat = rand_dp_nc_matrix(10, 1, seed=0)
-        #int, slice, (int, slice), (slice, int), (slice, slice), or (int, int)
+        # int, slice, (int, slice), (slice, int), (slice, slice), or (int, int)
         with self.assertRaises(TypeError):
             dp_mat[:dp_mat]
         with self.assertRaises(TypeError):
@@ -1013,7 +984,7 @@ class TestSlice(TestCase):
         with self.assertRaises(ValueError):
             nc_mat[1:2:-2]
     
-    #Test basic operations with slices, ignore speed
+    # Test basic operations with slices, ignore speed.
     def test_add_slice(self):
         dp_mat1, nc_mat1 = rand_dp_nc_matrix(100, 150, seed=0)
         dp_mat2, nc_mat2 = rand_dp_nc_matrix(100, 150, seed=1)

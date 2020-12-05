@@ -579,7 +579,7 @@ PyObject *Matrix61c_set_value(Matrix61c *self, PyObject* args) {
 PyObject *Matrix61c_get_value(Matrix61c *self, PyObject* args) {
     /* TODO: YOUR CODE HERE */
     if (self == NULL || args == NULL) {
-        PyErr_SetString(PyExc_TypeError, "Arguments are null!");
+        PyErr_SetString(PyExc_RuntimeError, "Arguments are null!");
         return NULL;
     }
 
@@ -913,7 +913,7 @@ int Matrix61c_set_subscript(Matrix61c* self, PyObject *key, PyObject *v) {
             } else if (self->mat->is_1d && (stop - start == 1) && self->mat->cols == 1) {
                 set(self->mat, start, 0, PyFloat_AsDouble(v));
             } else {
-                PyErr_SetString(PyExc_TypeError, "TypeError: Value is not valid!");
+                PyErr_SetString(PyExc_TypeError, "Value is not valid!");
                 return -1;
             }
         } else if (PyList_Check(v) && !PyList_Check(PyList_GetItem(v, 0))) {

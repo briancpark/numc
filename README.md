@@ -4,11 +4,14 @@ Kaelyn Kim, Brian Park
 Here's what I did in project 4:
 -
 
+## How we worked together
+Discussed key ideas, concepts and design choices as well as reviewed and explained code together for better understanding over Zoom and Messenger.
+
 ## Task 1
 Implemented various functions. There were some conceptual challenges in understanding how slicing works, but turns out they're really represented as linked lists/trees of matrix structs. So all we needed to do was shift memory pointers by offsets. Naive matrix operations were actually pretty straightfoward, and *much* easier compared to the matrix operations we had to implement in RISC-V assembly for project 2. Optimizations were applied later once we learn parallelism!
 
 ### `int allocate_matrix(matrix **mat, int rows, int cols)`
-The very first function we implemented. In order to understand this and the spec inside and out, we took the time to carefully implement everything before moving on to other function. An important design choice was to use a double pointer array to properly address and call on 2D matrices. It makes sense to do so, and made slicing implementation much more intuitive and less of a hassle. Later we optimized this in Task 4.
+The very first function we implemented. In order to understand this and the spec inside and out, we took the time to carefully implement everything before moving on to other functions. An important design choice was to use a double pointer array to properly address and call on 2D matrices. It makes sense to do so, and made slicing implementation much more intuitive and less of a hassle. Later we optimized this in Task 4.
 
 ### `int allocate_matrix_ref(matrix **mat, matrix *from, int row_offset, int col_offset, int rows, int cols)`
 Understanding `allocate_matrix()` allowed us to proceed further to this function. It turns out this was related to slicing. We had to come back later and fix bugs related to pointers. For the longest time, Brian was stuck up on how to shift pointers around and weird bugs would happen. After Brian rigorously debugged in `gdb`, he found the pointers could be elegantly be shifted with:

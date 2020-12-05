@@ -58,10 +58,10 @@ void rand_matrix(matrix *result, unsigned int seed, double low, double high) {
  * Return 0 upon success and non-zero upon failure.
  */
 int allocate_matrix(matrix **mat, int rows, int cols) {
-    /* TODO: YOUR CODE HERE */
-    //How to allocate continguous memory was referenced here: https://www.dimlucas.com/index.php/2017/02/18/the-proper-way-to-dynamically-create-a-two-dimensional-array-in-c/
+    // How to allocate continguous memory was referenced here: https://www.dimlucas.com/index.php/2017/02/18/the-proper-way-to-dynamically-create-a-two-dimensional-array-in-c/
+
     if (rows < 1 || cols < 1) {
-        PyErr_SetString(PyExc_TypeError, "Nonpositive dimensions!");
+        PyErr_SetString(PyExc_ValueError, "Nonpositive dimensions!");
         return -1;
     }
 
@@ -115,9 +115,8 @@ int allocate_matrix(matrix **mat, int rows, int cols) {
  */
 int allocate_matrix_ref(matrix **mat, matrix *from, int row_offset, int col_offset,
                         int rows, int cols) {
-    /* TODO: YOUR CODE HERE */
-    if (rows < 0 || cols < 0) {
-        PyErr_SetString(PyExc_TypeError, "Negative index");
+    if (rows <= 0 || cols <= 0) {
+        PyErr_SetString(PyExc_ValueError, "Negative index");
         return -1;
     }
 
@@ -160,7 +159,6 @@ int allocate_matrix_ref(matrix **mat, matrix *from, int row_offset, int col_offs
             return -1;
         }
     }
-
     return 0;
 }
 
@@ -172,15 +170,17 @@ int allocate_matrix_ref(matrix **mat, matrix *from, int row_offset, int col_offs
  * See the spec for more information.
  */
 void deallocate_matrix(matrix *mat) {
-    /* TODO: YOUR CODE HERE */
     // The process of deallocating is much similar to deallocating/freeing a linked list in C
-    
+    // TEST MORE LATER JUST IN CASE 
     if (mat == NULL) {
         return;
     } else if (mat->parent == NULL && mat->ref_cnt <= 1) {
-        free(mat->data[0]);
-        free(mat->data);
+        if (mat->data != NULL) {
+            free(mat->data[0]);
+            free(mat->data);
+        }
         free(mat);
+        return;
     } else if (mat->parent != NULL && mat->parent->ref_cnt <= 1) {
         deallocate_matrix(mat->parent);
         free(mat);
@@ -194,7 +194,6 @@ void deallocate_matrix(matrix *mat) {
  * You may assume `row` and `col` are valid.
  */
 double get(matrix *mat, int row, int col) {
-    /* TODO: YOUR CODE HERE */
     return mat->data[row][col];
 }
 
@@ -203,7 +202,6 @@ double get(matrix *mat, int row, int col) {
  * `col` are valid
  */
 void set(matrix *mat, int row, int col, double val) {
-    /* TODO: YOUR CODE HERE */
     mat->data[row][col] = val;
 }
 
@@ -211,7 +209,6 @@ void set(matrix *mat, int row, int col, double val) {
  * Set all entries in mat to val
  */
 void fill_matrix(matrix *mat, double val) {
-    /* TODO: YOUR CODE HERE */
     int rows = mat->rows;
     int cols = mat->cols;
     for (int i = 0; i < rows; i++) {
@@ -221,14 +218,11 @@ void fill_matrix(matrix *mat, double val) {
     }
 }
 
-
-
 /*
  * Store the result of adding mat1 and mat2 to `result`.
  * Return 0 upon success and a nonzero value upon failure.
  */
 int add_matrix(matrix *result, matrix *mat1, matrix *mat2) {
-    /* TODO: YOUR CODE HERE */
     if ((result->rows == mat1->rows && mat1->rows == mat2->rows) && 
         (result->cols == mat1->cols && mat1->cols == mat2->cols)) {
         if (mat1->rows < 16 || mat1->cols < 16 || mat1->parent != NULL || mat2->parent != NULL) {
@@ -267,7 +261,6 @@ int add_matrix(matrix *result, matrix *mat1, matrix *mat2) {
  * Return 0 upon success and a nonzero value upon failure.
  */
 int sub_matrix(matrix *result, matrix *mat1, matrix *mat2) {
-    /* TODO: YOUR CODE HERE */
     if ((result->rows == mat1->rows && mat1->rows == mat2->rows) && 
         (result->cols == mat1->cols && mat1->cols == mat2->cols)) {
         if (mat1->rows < 16 || mat1->cols < 16 || mat1->parent != NULL || mat2->parent != NULL) {
@@ -307,7 +300,6 @@ int sub_matrix(matrix *result, matrix *mat1, matrix *mat2) {
  * Remember that matrix multiplication is not the same as multiplying individual elements.
  */
 inline int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
-    /* TODO: YOUR CODE HERE */
     if ((result->rows == mat1->rows) && (result->cols == mat2->cols) && (mat1->cols == mat2->rows)) { 
         
         double *data = (double*) calloc(mat1->rows * mat2->cols, sizeof(double));
@@ -382,8 +374,8 @@ inline int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
  * Remember that pow is defined with matrix multiplication, not element-wise multiplication.
  */
 int pow_matrix(matrix *result, matrix *mat, int pow) {
-    /* TODO: YOUR CODE HERE */
     // Divide and conquer algorithm inspired from https://www.hackerearth.com/practice/notes/matrix-exponentiation-1/ 
+
     if (pow < 0) {
         //ValueError if a is not a square matrix or if pow is negative.
         PyErr_SetString(PyExc_ValueError, "Power is negative!");
@@ -467,7 +459,6 @@ int neg_matrix(matrix *result, matrix *mat) {
  * Return 0 upon success and a nonzero value upon failure.
  */
 int abs_matrix(matrix *result, matrix *mat) {
-    /* TODO: YOUR CODE HERE */
     if ((result->rows == mat->rows) && (result->cols == mat->cols)) {
         if (mat->rows < 16 || mat->cols < 16 || mat->parent != NULL) {
             for (int i = 0; i < mat->rows; i++) {

@@ -60,7 +60,7 @@ void rand_matrix(matrix *result, unsigned int seed, double low, double high) {
 int allocate_matrix(matrix **mat, int rows, int cols) {
     // How to allocate continguous memory was referenced here: https://www.dimlucas.com/index.php/2017/02/18/the-proper-way-to-dynamically-create-a-two-dimensional-array-in-c/
 
-    if (rows < 1 || cols < 1) {
+    if (rows <= 0 || cols <= 0) {
         PyErr_SetString(PyExc_ValueError, "Nonpositive dimensions!");
         return -1;
     }

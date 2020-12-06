@@ -181,7 +181,14 @@ int allocate_matrix_ref(matrix **mat, matrix *from, int row_offset, int col_offs
  * See the spec for more information.
  */
 void deallocate_matrix(matrix *mat) {
-    // The process of deallocating is much similar to deallocating/freeing a linked list in C
+    /* Three scenarios:
+     * -mat is NULL
+     * -mat is the root
+     *  -if ref_cnt <= 1, free EVERYTHING
+     * -mat is child of root
+     *  -if ref_cnt of root is <=1, free EVERYTHING as well as mat
+     *  -if ref_cnt is > 1, just free the current mat, decrement ref_cnt  
+     */
     if (mat == NULL) {
         return;
     } else if (mat->parent == NULL && mat->ref_cnt <= 1) {
@@ -190,17 +197,16 @@ void deallocate_matrix(matrix *mat) {
         free(mat->data);
         free(mat);
         return;
-    } else if (mat->parent != NULL) { // && mat->parent->ref_cnt > 1
+    } else if (mat->parent != NULL && mat->parent->ref_cnt <= 1) { // && mat->parent->ref_cnt > 1
         //If mat is child of the root, then free matrix struct, decrement ref_cnt, and nothing else
-        if (mat->parent->ref_cnt <= 1 ) {
-            free(mat->parent->data[0]);
-            free(mat->parent->data);
-            free(mat->parent);
-            free(mat->data[0]);
-            free(mat->data);
-            free(mat);
-            return;
-        }
+        free(mat->parent->data[0]);
+        free(mat->parent->data);
+        free(mat->parent);
+        free(mat->data[0]);
+        free(mat->data);
+        free(mat);
+        return;
+    } else if (mat->parent != NULL && mat->parent->ref_cnt > 1) {
         mat->parent->ref_cnt--;
         free(mat->data);
         free(mat);

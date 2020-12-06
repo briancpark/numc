@@ -1,17 +1,20 @@
-# numc
+# [numc](https://cs61c.org/fa20/projects/proj4/)
 Kaelyn Kim, Brian Park
 
 Here's what I did in project 4:
 -
 
+## How we worked together
+Discussed key ideas, concepts and design choices as well as reviewed and explained code together for better understanding over Zoom and Messenger.
+
 ## Task 1
 Implemented various functions. There were some conceptual challenges in understanding how slicing works, but turns out they're really represented as linked lists/trees of matrix structs. So all we needed to do was shift memory pointers by offsets. Naive matrix operations were actually pretty straightfoward, and *much* easier compared to the matrix operations we had to implement in RISC-V assembly for project 2. Optimizations were applied later once we learn parallelism!
 
 ### `int allocate_matrix(matrix **mat, int rows, int cols)`
-The very first function we implemented. In order to understand this and the spec inside and out, we took the time to carefully implement everything before moving on to other function. An important design choice was to use a double pointer array to properly address and call on 2D matrices. It makes sense to do so, and made slicing implementation much more intuitive and less of a hassle. Later we optimized this in Task 4.
+The very first function we implemented. In order to understand this and the spec inside and out, we took the time to carefully implement everything before moving on to other functions. An important design choice was to use a double pointer array to properly address and call on 2D matrices. It makes sense to do so, and made slicing implementation much more intuitive and less of a hassle. Later we optimized this in Task 4.
 
 ### `int allocate_matrix_ref(matrix **mat, matrix *from, int row_offset, int col_offset, int rows, int cols)`
-Understanding `allocate_matrix()` allowed us to proceed further to this function. It turns out this was related to slicing. We had to come back later and fix bugs related to pointers. For the longest time, Brian was stuck up on how to shift pointers around and weird bugs would happen. After Brian rigorously debugged in `cgdb`, he found the pointers could be elegantly be shifted with:
+Understanding `allocate_matrix()` allowed us to proceed further to this function. It turns out this was related to slicing. We had to come back later and fix bugs related to pointers. For the longest time, Brian was stuck up on how to shift pointers around and weird bugs would happen. After Brian rigorously debugged in `gdb`, he found the pointers could be elegantly be shifted with:
 ```c
 (*mat)->data[i] = from->data[i + row_offset] + col_offset;
 ```
@@ -47,11 +50,11 @@ Hardest part were slicing, just due to the sheer complexity and *MANY* different
 We also kept failing `set()` for the most minor and funniest reason. Brian kept improving on slicing functionality, thinking that the autograder's set correctness test robustly tested on it. But turns our it was resolved in OH when Brian realized that `set()` didn't have to be invoked through slicing. It could be invoked through `set(self, i, j, val)` in `Python`. The bug was just a simple error handling between `if (!PyLong_Check(val) || !PyFloat_Check(val))` to `if (!PyLong_Check(val) && !PyFloat_Check(val))` Even though time debugging it was fustrating, at least Brian made sure many slicing errors were handled and properly working. 
 
 ### Testing
-After the core parts of Task 3 was implemented, we could finally move on to testing our `numc` library and ensure that it works correctly. The Python `unittest` framework can be abused through tactical testing and Brian added fuzz, scaling, and fuzz repetition global parameters to scale up the testing when needed. Parameters were catiously set and tuned as Brian almost crashed an entire Hive server for running large tests. Brian also crashed a server for not realizing there was a memory leak in `allocate_matrix()` and the server would hit 32GB of RAM and then die.
+After the core parts of Task 3 was implemented, we could finally move on to testing our `numc` library and ensure that it works correctly. The Python `unittest` framework can be abused through tactical testing and Brian added fuzz, scaling, and fuzz repetition global parameters to scale up the testing when needed. Parameters were catiously set and tuned as Brian almost crashed an entire Hive server for running large tests. Brian also crashed a server for not realizing there was a memory leak in `deallocate_matrix()` and the server would hit 32GB of RAM and then die. After finishing improving performance, a huge chunk of time was made trying to make more tests and make our `numc` fail, because the more tests you make, the more bugs you find. A lot of bugs were found related to slicing.
 
 For efficient TDD workflow, Brian made a simple bash script to compile and run all tests under the executable 
 ```
-./skiddie.sh
+$ ./skiddie.sh
 ```
 It will do everything in one line, (load `Python` environment, clean, compile, and run `unittests`) because well... Brian is lazy and a script kiddie.
 
@@ -71,7 +74,6 @@ for (int i = 0; i < mat1->rows; i++) {
         result->data[i][j] = mat1->data[i][j] + mat2->data[i][j];  
     }
 }
-return 0;
 ```
 
 #### Improving Memory Spatial Locality (Better Caching)
@@ -134,11 +136,10 @@ for (int i = 0; i < mat1->rows * mat1->cols / 16 * 16; i += 16) {
 for (int i = mat1->rows * mat1->cols / 16 * 16; i < mat1->rows * mat1->cols; i++) {
     *(res_pointer + i) = *(mat1_pointer + i) + *(mat2_pointer + i); 
 }
-return 0;
 ```
 
 #### I hope the rope is... Multithreaded
-Faster! We applied OpenMP, with a simple `pragma omp parallel for`. Was it really that easy though? No, as you saw in the previous iteration with SIMD, we had to stuff all the operations in one line. We did this to prevent any race conditions or false sharing that would happen with parallelization. Even though the Hive's machine have 8 threads, they are hyperthreaded, and the computer architecture is really just 4 cores. Hyperthreading makes it so that the 2 threads in a core would compete for data, so we catiously chose to make it run on 4 threads instead. This gives us a total speedup of 5X compared to `dumbpy`, sometimes 5.09X if lucky!
+Faster! We applied OpenMP, with a simple `pragma omp parallel for`. Was it really that easy though? No, as you saw in the previous iteration with SIMD, we had to stuff all the operations in one line. We did this to prevent any race conditions or false sharing that would happen with parallelization. Even though the Hive's machine have 8 threads, they are hyperthreaded, and the computer architecture is really just 4 cores. Hyperthreading makes it so that the 2 threads in a core would compete for data, so we catiously chose to make it run on 4 threads instead. This gives us a total speedup of 5X compared to `dumbpy`, sometimes 5.1X if lucky!
 
 ```c
 double *res_pointer = result->data[0];
@@ -157,7 +158,6 @@ for (int i = 0; i < mat1->rows * mat1->cols / 16 * 16; i += 16) {
 for (int i = mat1->rows * mat1->cols / 16 * 16; i < mat1->rows * mat1->cols; i++) {
     *(res_pointer + i) = *(mat1_pointer + i) + *(mat2_pointer + i); 
 }
-return 0;
 ```
 
 #### Slicing Performance
@@ -169,13 +169,11 @@ if (mat1->rows < 16 || mat1->cols < 16 || mat1->parent != NULL || mat2->parent !
             result->data[i][j] = mat1->data[i][j] + mat2->data[i][j];  
         }
     }
-    return 0;
 }
 ```
 
 #### Can We Do Even Better? (Conclusion)
 We could certainly optimize it a bit more efficiently by carefully thinking about caches and virtual memory. But this is the best we could come with in terms of performance. 
-
 
 ### Multiply
 This was mainly the hardest part of the project. Although we thought we have mastered matrix multiplication by doing it in RISC-V for project 2, it is even harder trying to parallelize it. There are things you need to consider such as how memory is meticuously handled. We will explain our troubles and difficulty spent debugging through the buildup of how matrix multiplication was sped up. Brian did a *LOT* of research on DGEMM papers. DGEMM stands for **D**ouble-precision, **GE**neral **M**atrix-**M**atrix multiplication. Resources include [Patterson and Hennesy's Computer Organization and Design](https://www.amazon.com/Computer-Organization-Design-RISC-V-Architecture/dp/0128122757), [Nicholas Weaver's 61C - Lecture 18 Spring 2019](https://www.youtube.com/watch?v=ibzkJAkn2_o) [slides](https://inst.eecs.berkeley.edu/~cs61c/sp19/lectures/lec18.pdf), [What Every Programmer Should Know About Memory by Ulrich Drepper](https://akkadia.org/drepper/cpumemory.pdf), and [Matrix Multiplication using SIMD](https://www.youtube.com/watch?v=3rU6BX7w8Tk&list=PLKT8ER2pEV3umVSMwd06LY_eSIX-DnU6A&index=1).
@@ -208,7 +206,7 @@ Before we move on, we must first observe why matrix multiplication is such a com
 ![matmul](https://www.mymathtables.com/calculator/matrix/3x3-matrix-formula.png)
 
 #### SIMD
-Again, Intel Intrinsics saves the day with subword parallelism. Fortunately, Patterson and Henessy paints the picture very elegantly in their textbook, as their newest edition includes a buildup of how to improve DGEMM performance with SIMD, cache blocking, and multithreaded parallelism. Unfortunately, the Patterson and Hennessy implementation does not work out of the box, because they only did it for square matrices with dimension of `2^n`, so a tail case needed to be implemented as well. Here is how that looks like with a few more optimizations like loop unrolling as well:
+Again, Intel Intrinsics saves the day with subword parallelism. Fortunately, Patterson and Henessy paints the picture very elegantly in their textbook, as their newest edition includes a buildup of how to improve DGEMM performance with SIMD, cache blocking, and multithreaded parallelism. Unfortunately, the Patterson and Hennessy implementation does not work out of the box, because they only did it for square matrices with dimension of 2^n, so a tail case needed to be implemented as well. Here is how that looks like with a few more optimizations like loop unrolling as well:
 
 ```c
 for (int i = 0; i < mat1->rows; i++) { 
@@ -329,7 +327,7 @@ for (int i = 0; i < mat2->cols; i++) {
     }
 }
 
-int blocksize = 64;
+int blocksize = 32;
 
 if (mat1->rows < blocksize || mat1->cols < blocksize || mat2->rows < blocksize || mat2->cols < blocksize || mat1->parent != NULL || mat2->parent != NULL) {
     omp_set_num_threads(4);
@@ -346,7 +344,6 @@ if (mat1->rows < blocksize || mat1->cols < blocksize || mat2->rows < blocksize |
     for (int i = 0; i < mat1->rows * mat2->cols; i++) {
         *(result->data[0] + i) = *(data + i);                
     }
-    return 0;
 }
 
 #pragma omp parallel for num_threads(4)
@@ -391,10 +388,31 @@ free(b_transpose);
 We debated over this one heavily. Having taken CS 170, we thought this would be a very nice divide and conquer method, being easily parallizable and cut down on runtime. Although Strassen's performs O(n^(2.81)) compared to O(n^3), there was an issue with how Strassens work. Strassens performs poorly on smaller matrices. Also, Strassen's requires matrix dimensions to be a power of 2 with it being square. This is possible to do by zero padding matrices, but we also lose performance if the matrix is not relatively square or we're doing matrix-vector multiplication. We could be working with very sparse matrices if the dimensions are unaligned. `allocate_matrix()` would need to be tuned to zero pad matrices, potentially messing with the functionality of other matrix operations. Cache blocking and SIMD would be operated on data with `0.0` if it's zero padded, so it sounds like a bad algorithm to implement. We'd be wasting a lot of computation on zero vectors on sparse matrices. Thus, the improvement from O(n^3) to O(n^(2.81)) was not worth it due to the input limitations of Strassen's.
 
 #### Can We Do Even Better (Conclusion)
+Of course, DGEMM is sill being researched today. This may be the best we can do in terms of hardware and the limitations of the Hive's 4th generation i7. There are certainly other types of DGEMM research going on related to other types of hardware such as GPUs, TPUs, and even Apple's new A12 with Neural Engine, all with high DGEMM performance to compute neural networks and other matrix operations. It is able to [make our iPhones much faster and powerful](https://analyticsindiamag.com/apple-a14-bionic-machine-learning-chip-processor/), [beat a professional player in Go](https://www.theverge.com/circuitbreaker/2016/5/19/11716818/google-alphago-hardware-asic-chip-tensor-processor-unit-machine-learning), and [even play 8K HDR gaming!](https://www.nvidia.com/en-us/geforce/graphics-cards/30-series/rtx-3090/).
 
+Even NVIDIA has their own type of Intrinsic-like parallel programming platform,  [CUDA](https://developer.nvidia.com/cuda-toolkit). We've seen it outperform in Deep Learning applications and gaming, and this might be a fun project to learn/do over break now that we have done it successfully in Intel CPU architecture!
 
 ### Power
-Used a simple divide and conquer method noted [here](https://www.hackerearth.com/practice/notes/matrix-exponentiation-1/). The way matrices are powered in this once cuts down coputation by an order of O(log(n))!
+Used a simple divide and conquer method noted [here](https://www.hackerearth.com/practice/notes/matrix-exponentiation-1/). The way matrices are powered in this once cuts down computation by an order of O(log(n)) relative to matrix multiplication. The actual runtime would be O(n^3log(n)), but because parallelism was applied, it's a bit weird to do formal runtime analyis.
+
+#### Matrix Exponentation
+Here is how it's done! Basically we and save computation on an order of log(n) by repeatedly squaring A. 
+
+*e.g. A^5 = ((A^2)^2)A*
+
+This in total gives us over 2000X performance!
+
+#### Matrix Decomposition
+We can definitely do better... but in certain cases. The total runtime of O(n^3log(n)) can be done better, but in tricky cases with high manipulation. We can try to exploit linear algebra by using [spectral decomposition](https://en.wikipedia.org/wiki/Eigendecomposition_of_a_matrix). Basically, a matrix A can be decomposed into A = VDV^-1. Although the computation to get the eigenvalues and eigenvector to compose V, D, and V^-1, it should not even matter in terms of amortized cost and perfomance. Because now you can use regular matrix multiplication to compute A^n. Why? 
+
+A^n = V * D * V^-1 * V * D * V^-1 * ... * V * D * V^-1 (decomposition is multiplied n times)
+
+A^n = V * D^n * V^-1 (exploit the fact that V^-1 * V = I)
+
+Of course, there are certain cases to consider, cannot be defective and must be diagonalizable, so might be infeasible. It actaully might hurt us in the amortized cost, as we have to calculate the eigenvalues and eigenvectors everytime, which is definitely costly for larger matrices. So the overhead cost of calculating such values might not be worth it. But definitely a cool linear algebra trick to consider!
+
+#### Can We Do Even Better (Conclusion)
+Although we use the subroutine multiply along with repeated squaring, we can probably tune our power better with caching. After all, in the repeated squaring, we are multiplying by the same matrix A many times, so maybe caching can be better optimized to hit and access the same addresses during powers. But, a near 2100X (2200X if lucky) speedup is good enough for now. And we have done it! We have accelerated the naive operations on matrices by a factor of at most 2000X! This is such an amazing achievement and improvement that parallelism offers, and gives full utilization of hardware! Although it is not as fast as `numpy`, we have successfully handled the complexity of C and abstracted it away into a very intuitive library for us to interact with in `Python`. We also see why matrix operations are important when we learn machine learning and graphical processing, so it was very cool to see us make a powerful library from scratch.
 
 ### About the Hive CPUs
 Will be useful in determining optimization choices and constraints.

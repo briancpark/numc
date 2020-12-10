@@ -1208,3 +1208,11 @@ class TestShape(TestCase):
         self.assertTrue(dp_mat.shape == nc_mat.shape)
         del dp_mat
         del nc_mat
+    
+class TestComprehensive(TestCase):
+    def test_all_comprehensive(self):
+        ad, an = rand_dp_nc_matrix(100, 100, seed=0)
+        bd, bn = rand_dp_nc_matrix(100, 100, seed=0)
+        cd, cn = rand_dp_nc_matrix(100, 100, seed=0)
+        self.assertEqual(((-ad) - bd) + cd ** 2 + ad, ((-an) - bn) + cn ** 2 + an)
+        

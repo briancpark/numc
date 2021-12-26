@@ -8,7 +8,7 @@ Hint: use dp_mc_matrix to generate dumbpy and numc matrices with the same data a
 """
 
 ### Global variables
-fuzz = 1000
+fuzz = 3500
 fuzz_rep = 10
 scale = 4
 ### DANGEROUS CHANGE WITH CAUTION

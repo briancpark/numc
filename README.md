@@ -1,11 +1,13 @@
 # [numc](https://cs61c.org/fa20/projects/proj4/)
-Kaelyn Kim, Brian Park
+Brian Park
 
-Here's what I did in project 4:
--
+## Setup
 
-## How we worked together
-Discussed key ideas, concepts and design choices as well as reviewed and explained code together for better understanding over Zoom and Messenger.
+The project was originally developed on Berkeley Hive mahcines, but we can emulate it under a Docker container.
+```
+docker build -t numc .
+```
+
 
 ## Task 1
 Implemented various functions. There were some conceptual challenges in understanding how slicing works, but turns out they're really represented as linked lists/trees of matrix structs. So all we needed to do was shift memory pointers by offsets. Naive matrix operations were actually pretty straightfoward, and *much* easier compared to the matrix operations we had to implement in RISC-V assembly for project 2. Optimizations were applied later once we learn parallelism!

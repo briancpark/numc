@@ -4,7 +4,7 @@ RUN apt-get update -y
 RUN apt-get install software-properties-common -y
 RUN add-apt-repository ppa:deadsnakes/ppa
 RUN apt-get update -y
-RUN apt-get install python3-pip python3.6 bash vim valgrind gcc gdb cgdb python3-venv -y
+RUN apt-get install python3-pip python3.6 bash vim valgrind gcc gdb cgdb python3-venv git htop -y
 COPY ./* numc/
 SHELL ["/bin/bash", "-c"]
 RUN cd numc 

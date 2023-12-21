@@ -1,4 +1,5 @@
 from distutils.core import setup, Extension
+import os
 import sysconfig
 
 
@@ -11,7 +12,8 @@ def main():
         "-mavx",
         "-mfma",
         "-pthread",
-        "-O3",
+        "-Ofast",
+        "-ffast-math",
     ]
     LDFLAGS = ["-fopenmp"]
 
@@ -33,6 +35,11 @@ def main():
         url="https://cs61c.org/fa20/projects/proj4/",
         ext_modules=[module],
     )
+
+    num_cores = os.cpu_count()
+    os.environ["OMP_PLACES"] = "cores"
+    os.environ["OMP_PROC_BIND"] = "spread"
+    os.environ["OMP_NUM_THREADS"] = str(num_cores)
 
 
 if __name__ == "__main__":

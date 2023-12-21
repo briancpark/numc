@@ -11,28 +11,27 @@ on:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.6"]
+        python-version: ["3.6.15"]  
 
     steps:
     - uses: actions/checkout@v2
+
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
+
     - name: Install dependencies
       run: |
-        python3.6 -m venv .venv
-        source .venv/bin/activate
-        pip3 install -r requirements.txt
+        pip install -r requirements.txt
+
     - name: Test with unittest
       run: |
-        source .venv/bin/activate
         make clean
         make
         cd unittests
-        python3 -m unittest unittests -v
+        python -m unittest discover -v

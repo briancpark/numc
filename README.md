@@ -62,11 +62,13 @@ We also kept failing `set()` for the most minor and funniest reason. We kept imp
 ### Testing
 After the core parts of Task 3 was implemented, we could finally move on to testing our `numc` library and ensure that it works correctly. The Python `unittest` framework can be abused through tactical testing and I added fuzz, scaling, and fuzz repetition global parameters to scale up the testing when needed. Parameters were catiously set and tuned as I almost crashed an entire Hive server for running large tests. I also crashed a server for not realizing there was a memory leak in `deallocate_matrix()` and the server would hit 32GB of RAM and then die. After finishing improving performance, a huge chunk of time was made trying to make more tests and make our `numc` fail, because the more tests you make, the more bugs you find. A lot of bugs were found related to slicing.
 
-For efficient TDD workflow, I made a simple bash script to compile and run all tests under the executable 
+```sh
+source .venv/bin/activate
+make clean
+make
+cd unittests
+python3 -m unittest unittests -v
 ```
-$ ./skiddie.sh
-```
-It will do everything in one line, (load `Python` environment, clean, compile, and run `unittests`) because well... I am lazy and a script kiddie.
 
 ## Task 4
 Here begins the important chunk of the project, performing these operations faster. These operations are *embarassingly parallel*, so let's abuse it! We got the hardware, so let's write the software!

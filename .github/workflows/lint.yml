@@ -11,8 +11,6 @@ on:
 
 jobs:
   c-format:
-    runs-on: ubuntu-latest
-
     steps:
     - name: Check out code
       uses: actions/checkout@v2
@@ -35,9 +33,9 @@ jobs:
   python-format:
     runs-on: ubuntu-20.04
     strategy:
-    fail-fast: false
-    matrix:
-      python-version: ["3.6"]  
+      fail-fast: false
+      matrix:
+        python-version: ["3.6"]  
   
     steps:
     - uses: actions/checkout@v2

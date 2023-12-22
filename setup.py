@@ -14,6 +14,7 @@ def main():
         "-pthread",
         "-Ofast",
         "-ffast-math",
+        "-march=native",
     ]
     LDFLAGS = ["-fopenmp"]
 

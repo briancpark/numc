@@ -68,8 +68,7 @@ def get_theoretical_peak():
 
 
 def matmul_benchmark(m, n, k):
-    trials = 5
-    benchmark_numpy = False
+    trials = 25
 
     dp_mat1, nc_mat1 = rand_dp_nc_matrix(m, k, seed=0)
     dp_mat2, nc_mat2 = rand_dp_nc_matrix(k, n, seed=1)
@@ -80,18 +79,17 @@ def matmul_benchmark(m, n, k):
     nc_times = []
     flops = 2 * m * n * k
 
-    if benchmark_numpy:
-        for i in range(trials):
-            start = time.time()
-            c = a @ b
-            end = time.time()
-            np_times.append(end - start)
+    for i in range(trials):
+        start = time.time()
+        c = a @ b
+        end = time.time()
+        np_times.append(end - start)
 
-        avg_time = np.mean(np_times)
-        avg_flops = flops / avg_time
-        print("Numpy average time: ", avg_time)
-        print("Numpy average gflops: ", avg_flops / 1e9)
-        print("Percent of peak: ", avg_flops / 1e9 / get_theoretical_peak() * 100)
+    avg_time = np.mean(np_times)
+    avg_flops = flops / avg_time
+    print("Numpy average time: ", avg_time)
+    print("Numpy average gflops: ", avg_flops / 1e9)
+    print("Percent of peak: ", avg_flops / 1e9 / get_theoretical_peak() * 100)
 
     for i in range(trials):
         start = time.time()

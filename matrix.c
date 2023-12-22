@@ -13,7 +13,6 @@
 #endif
 
 #define NUM_THREADS omp_get_thread_num()
-#define ALIGNMENT 64
 /*
  * Generates a random double between `low` and `high`.
  */
@@ -217,7 +216,7 @@ void set(matrix* mat, int row, int col, double val) { mat->data[row][col] = val;
  * Set all entries in mat to val
  */
 void fill_matrix(matrix* mat, double val) {
-    memset(mat->data[0], val, mat->cols * mat->cols * sizeof(double));
+    memset(mat->data[0], val, mat->rows * mat->cols * sizeof(double));
 }
 
 /*
@@ -341,7 +340,6 @@ inline int mul_matrix(matrix* result, matrix* mat1, matrix* mat2) {
             return 0;
         }
 
-
 #pragma omp parallel for num_threads(NUM_THREADS) collapse(2) schedule(dynamic)
         for (int i_blocked = 0; i_blocked < mat1->rows; i_blocked += blocksize) {
             for (int j_blocked = 0; j_blocked < mat2->cols; j_blocked += blocksize) {
@@ -349,35 +347,34 @@ inline int mul_matrix(matrix* result, matrix* mat1, matrix* mat2) {
                     for (int i = i_blocked; i < (i_blocked + blocksize) && i < mat1->rows; i++) {
                         for (int j = j_blocked;
                              j < j_blocked + blocksize && j < mat2->cols / 32 * 32; j += 32) {
-                            __m256d c0 = _mm256_loadu_pd(data + (i * mat2->cols) + j);
-                            __m256d c1 = _mm256_loadu_pd(data + (i * mat2->cols) + j + 4);
-                            __m256d c2 = _mm256_loadu_pd(data + (i * mat2->cols) + j + 8);
-                            __m256d c3 = _mm256_loadu_pd(data + (i * mat2->cols) + j + 12);
-                            __m256d c4 = _mm256_loadu_pd(data + (i * mat2->cols) + j + 16);
-                            __m256d c5 = _mm256_loadu_pd(data + (i * mat2->cols) + j + 20);
-                            __m256d c6 = _mm256_loadu_pd(data + (i * mat2->cols) + j + 24);
-                            __m256d c7 = _mm256_loadu_pd(data + (i * mat2->cols) + j + 28);
-
+                            register __m256d c0 = _mm256_loadu_pd(data + (i * mat2->cols) + j);
+                            register __m256d c1 = _mm256_loadu_pd(data + (i * mat2->cols) + j + 4);
+                            register __m256d c2 = _mm256_loadu_pd(data + (i * mat2->cols) + j + 8);
+                            register __m256d c3 = _mm256_loadu_pd(data + (i * mat2->cols) + j + 12);
+                            register __m256d c4 = _mm256_loadu_pd(data + (i * mat2->cols) + j + 16);
+                            register __m256d c5 = _mm256_loadu_pd(data + (i * mat2->cols) + j + 20);
+                            register __m256d c6 = _mm256_loadu_pd(data + (i * mat2->cols) + j + 24);
+                            register __m256d c7 = _mm256_loadu_pd(data + (i * mat2->cols) + j + 28);
 
                             for (int k = k_blocked; k < k_blocked + blocksize && k < mat2->rows;
                                  k++) {
-                                register __m256d inner_k = _mm256_broadcast_sd(mat1->data[i] + k);
-                                c0 = _mm256_fmadd_pd(inner_k,
-                                                     _mm256_loadu_pd(mat2->data[k] + j), c0);
-                                c1 = _mm256_fmadd_pd(inner_k,
+                                register __m256d mat1_reg = _mm256_broadcast_sd(mat1->data[i] + k);
+                                c0 = _mm256_fmadd_pd(mat1_reg, _mm256_loadu_pd(mat2->data[k] + j),
+                                                     c0);
+                                c1 = _mm256_fmadd_pd(mat1_reg,
                                                      _mm256_loadu_pd(mat2->data[k] + j + 4), c1);
-                                c2 = _mm256_fmadd_pd(inner_k,
+                                c2 = _mm256_fmadd_pd(mat1_reg,
                                                      _mm256_loadu_pd(mat2->data[k] + j + 8), c2);
-                                c3 = _mm256_fmadd_pd(inner_k,
+                                c3 = _mm256_fmadd_pd(mat1_reg,
                                                      _mm256_loadu_pd(mat2->data[k] + j + 12), c3);
-                                c4 = _mm256_fmadd_pd(inner_k,
-                                                        _mm256_loadu_pd(mat2->data[k] + j + 16), c4);
-                                c5 = _mm256_fmadd_pd(inner_k,
-                                                        _mm256_loadu_pd(mat2->data[k] + j + 20), c5);
-                                c6 = _mm256_fmadd_pd(inner_k,   
-                                                        _mm256_loadu_pd(mat2->data[k] + j + 24), c6);
-                                c7 = _mm256_fmadd_pd(inner_k,
-                                                        _mm256_loadu_pd(mat2->data[k] + j + 28), c7);
+                                c4 = _mm256_fmadd_pd(mat1_reg,
+                                                     _mm256_loadu_pd(mat2->data[k] + j + 16), c4);
+                                c5 = _mm256_fmadd_pd(mat1_reg,
+                                                     _mm256_loadu_pd(mat2->data[k] + j + 20), c5);
+                                c6 = _mm256_fmadd_pd(mat1_reg,
+                                                     _mm256_loadu_pd(mat2->data[k] + j + 24), c6);
+                                c7 = _mm256_fmadd_pd(mat1_reg,
+                                                     _mm256_loadu_pd(mat2->data[k] + j + 28), c7);
                             }
 
                             _mm256_storeu_pd(data + (i * mat2->cols) + j, c0);
@@ -395,7 +392,7 @@ inline int mul_matrix(matrix* result, matrix* mat1, matrix* mat2) {
         }
 
         for (int i = 0; i < mat1->rows; i++) {
-            for (int j = mat2->cols / 16 * 16; j < mat2->cols; j++) {
+            for (int j = mat2->cols / 32 * 32; j < mat2->cols; j++) {
                 for (int k = 0; k < mat2->rows; k++) {
                     *(data + (i * mat2->cols) + j) += mat1->data[i][k] * mat2->data[k][j];
                 }
@@ -474,25 +471,45 @@ int neg_matrix(matrix* result, matrix* mat) {
             return 0;
         }
 
-        __m256d zero_vector = _mm256_set1_pd(0.0);
         double* res_pointer = result->data[0];
         double* mat_pointer = mat->data[0];
 
+        // -0.0 has the sign bit set and all other bits clear
+        const __m256d sign_mask = _mm256_set1_pd(-0.0);
+
 #pragma omp parallel for num_threads(NUM_THREADS)
-        for (int i = 0; i < mat->rows * mat->cols / 16 * 16; i += 16) {
-            _mm256_storeu_pd(res_pointer + i,
-                             _mm256_sub_pd(zero_vector, _mm256_loadu_pd(mat_pointer + i)));
-            _mm256_storeu_pd(res_pointer + i + 4,
-                             _mm256_sub_pd(zero_vector, _mm256_loadu_pd(mat_pointer + i + 4)));
-            _mm256_storeu_pd(res_pointer + i + 8,
-                             _mm256_sub_pd(zero_vector, _mm256_loadu_pd(mat_pointer + i + 8)));
-            _mm256_storeu_pd(res_pointer + i + 12,
-                             _mm256_sub_pd(zero_vector, _mm256_loadu_pd(mat_pointer + i + 12)));
+        for (int i = 0; i < mat->rows * mat->cols / 32 * 32; i += 32) {
+            __m256d vec0 = _mm256_loadu_pd(mat_pointer + i);
+            __m256d vec1 = _mm256_loadu_pd(mat_pointer + i + 4);
+            __m256d vec2 = _mm256_loadu_pd(mat_pointer + i + 8);
+            __m256d vec3 = _mm256_loadu_pd(mat_pointer + i + 12);
+            __m256d vec4 = _mm256_loadu_pd(mat_pointer + i + 16);
+            __m256d vec5 = _mm256_loadu_pd(mat_pointer + i + 20);
+            __m256d vec6 = _mm256_loadu_pd(mat_pointer + i + 24);
+            __m256d vec7 = _mm256_loadu_pd(mat_pointer + i + 28);
+
+            vec0 = _mm256_xor_pd(vec0, sign_mask);
+            vec1 = _mm256_xor_pd(vec1, sign_mask);
+            vec2 = _mm256_xor_pd(vec2, sign_mask);
+            vec3 = _mm256_xor_pd(vec3, sign_mask);
+            vec4 = _mm256_xor_pd(vec4, sign_mask);
+            vec5 = _mm256_xor_pd(vec5, sign_mask);
+            vec6 = _mm256_xor_pd(vec6, sign_mask);
+            vec7 = _mm256_xor_pd(vec7, sign_mask);
+
+            _mm256_storeu_pd(res_pointer + i, vec0);
+            _mm256_storeu_pd(res_pointer + i + 4, vec1);
+            _mm256_storeu_pd(res_pointer + i + 8, vec2);
+            _mm256_storeu_pd(res_pointer + i + 12, vec3);
+            _mm256_storeu_pd(res_pointer + i + 16, vec4);
+            _mm256_storeu_pd(res_pointer + i + 20, vec5);
+            _mm256_storeu_pd(res_pointer + i + 24, vec6);
+            _mm256_storeu_pd(res_pointer + i + 28, vec7);
         }
 
 // Tail Case
 #pragma omp parallel for num_threads(NUM_THREADS)
-        for (int i = mat->rows * mat->cols / 16 * 16; i < mat->rows * mat->cols; i++) {
+        for (int i = mat->rows * mat->cols / 32 * 32; i < mat->rows * mat->cols; i++) {
             *(res_pointer + i) = (-1.0) * *(mat_pointer + i);
         }
         return 0;
@@ -515,28 +532,27 @@ int abs_matrix(matrix* result, matrix* mat) {
             return 0;
         }
 
-        __m256d zero_vector = _mm256_set1_pd(0.0);
+        // -0.0 has the sign bit set and all other bits cleared
+        const __m256d sign_mask = _mm256_set1_pd(-0.0);
         double* res_pointer = result->data[0];
         double* mat_pointer = mat->data[0];
 
 #pragma omp parallel for num_threads(NUM_THREADS)
         for (int i = 0; i < mat->rows * mat->cols / 16 * 16; i += 16) {
-            _mm256_storeu_pd(
-                res_pointer + i,
-                _mm256_max_pd(_mm256_sub_pd(zero_vector, _mm256_loadu_pd(mat_pointer + i)),
-                              _mm256_loadu_pd(mat_pointer + i)));
-            _mm256_storeu_pd(
-                res_pointer + i + 4,
-                _mm256_max_pd(_mm256_sub_pd(zero_vector, _mm256_loadu_pd(mat_pointer + i + 4)),
-                              _mm256_loadu_pd(mat_pointer + i + 4)));
-            _mm256_storeu_pd(
-                res_pointer + i + 8,
-                _mm256_max_pd(_mm256_sub_pd(zero_vector, _mm256_loadu_pd(mat_pointer + i + 8)),
-                              _mm256_loadu_pd(mat_pointer + i + 8)));
-            _mm256_storeu_pd(
-                res_pointer + i + 12,
-                _mm256_max_pd(_mm256_sub_pd(zero_vector, _mm256_loadu_pd(mat_pointer + i + 12)),
-                              _mm256_loadu_pd(mat_pointer + i + 12)));
+            __m256d vec0 = _mm256_loadu_pd(mat_pointer + i);
+            __m256d vec1 = _mm256_loadu_pd(mat_pointer + i + 4);
+            __m256d vec2 = _mm256_loadu_pd(mat_pointer + i + 8);
+            __m256d vec3 = _mm256_loadu_pd(mat_pointer + i + 12);
+
+            vec0 = _mm256_andnot_pd(sign_mask, vec0);
+            vec1 = _mm256_andnot_pd(sign_mask, vec1);
+            vec2 = _mm256_andnot_pd(sign_mask, vec2);
+            vec3 = _mm256_andnot_pd(sign_mask, vec3);
+
+            _mm256_storeu_pd(res_pointer + i, vec0);
+            _mm256_storeu_pd(res_pointer + i + 4, vec1);
+            _mm256_storeu_pd(res_pointer + i + 8, vec2);
+            _mm256_storeu_pd(res_pointer + i + 12, vec3);
         }
 
 // Tail Case

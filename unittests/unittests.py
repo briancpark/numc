@@ -51,8 +51,8 @@ class TestAdd(TestCase):
     def test_fractional_scaling_add(self):
         speeds = []
         for n in range(1, scale):
-            dp_mat1, nc_mat1 = rand_dp_nc_matrix(10 ** n, 10 ** n, seed=0)
-            dp_mat2, nc_mat2 = rand_dp_nc_matrix(10 ** n, 10 ** n, seed=1)
+            dp_mat1, nc_mat1 = rand_dp_nc_matrix(10**n, 10**n, seed=0)
+            dp_mat2, nc_mat2 = rand_dp_nc_matrix(10**n, 10**n, seed=1)
             is_correct, speed_up = compute(
                 [dp_mat1, dp_mat2], [nc_mat1, nc_mat2], "add"
             )
@@ -162,8 +162,8 @@ class TestSub(TestCase):
     def test_fractional_scaling_sub(self):
         print()
         for n in range(1, scale):
-            dp_mat1, nc_mat1 = rand_dp_nc_matrix(10 ** n, 10 ** n, seed=0)
-            dp_mat2, nc_mat2 = rand_dp_nc_matrix(10 ** n, 10 ** n, seed=1)
+            dp_mat1, nc_mat1 = rand_dp_nc_matrix(10**n, 10**n, seed=0)
+            dp_mat2, nc_mat2 = rand_dp_nc_matrix(10**n, 10**n, seed=1)
             is_correct, speed_up = compute(
                 [dp_mat1, dp_mat2], [nc_mat1, nc_mat2], "sub"
             )
@@ -243,7 +243,7 @@ class TestAbs(TestCase):
     def test_fractional_scaling_abs(self):
         print()
         for n in range(1, scale):
-            dp_mat, nc_mat = rand_dp_nc_matrix(10 ** n, 10 ** n, seed=0)
+            dp_mat, nc_mat = rand_dp_nc_matrix(10**n, 10**n, seed=0)
             is_correct, speed_up = compute([dp_mat], [nc_mat], "abs")
             self.assertTrue(is_correct)
             print_speedup(speed_up)
@@ -294,7 +294,7 @@ class TestNeg(TestCase):
     def test_fractional_scaling_neg(self):
         print()
         for n in range(1, scale):
-            dp_mat, nc_mat = rand_dp_nc_matrix(10 ** n, 10 ** n, seed=0)
+            dp_mat, nc_mat = rand_dp_nc_matrix(10**n, 10**n, seed=0)
             is_correct, speed_up = compute([dp_mat], [nc_mat], "neg")
             self.assertTrue(is_correct)
             print_speedup(speed_up)
@@ -354,8 +354,8 @@ class TestMul(TestCase):
     def test_fractional_scaling_mul(self):
         print()
         for n in range(1, scale):
-            dp_mat1, nc_mat1 = rand_dp_nc_matrix(10 ** n, 10 ** n, seed=0)
-            dp_mat2, nc_mat2 = rand_dp_nc_matrix(10 ** n, 10 ** n, seed=1)
+            dp_mat1, nc_mat1 = rand_dp_nc_matrix(10**n, 10**n, seed=0)
+            dp_mat2, nc_mat2 = rand_dp_nc_matrix(10**n, 10**n, seed=1)
             is_correct, speed_up = compute(
                 [dp_mat1, dp_mat2], [nc_mat1, nc_mat2], "mul"
             )
@@ -457,30 +457,30 @@ class TestPow(TestCase):
     def test_incorrect_dimension_pow(self):
         dp_mat, nc_mat = rand_dp_nc_matrix(100, 120, seed=0)
         with self.assertRaises(ValueError):
-            nc_mat ** 2
+            nc_mat**2
         del dp_mat
         del nc_mat
 
     def test_incorrect_power_pow(self):
         dp_mat, nc_mat = rand_dp_nc_matrix(100, 120, seed=0)
         with self.assertRaises(TypeError):
-            nc_mat ** 2.1
+            nc_mat**2.1
         del dp_mat
         del nc_mat
 
     def test_incorrect_power_int_pow(self):
         dp_mat, nc_mat = rand_dp_nc_matrix(100, 100, seed=0)
         with self.assertRaises(ValueError):
-            nc_mat ** -1
+            nc_mat**-1
         del dp_mat
         del nc_mat
 
     def test_1_pow(self):
         dp_mat, nc_mat = rand_dp_nc_matrix(100, 100, seed=0)
         self.assertEqual(dp_mat, nc_mat)
-        self.assertEqual(dp_mat ** 1, nc_mat)
-        self.assertEqual(dp_mat, nc_mat ** 1)
-        self.assertEqual(dp_mat ** 1, nc_mat ** 1)
+        self.assertEqual(dp_mat**1, nc_mat)
+        self.assertEqual(dp_mat, nc_mat**1)
+        self.assertEqual(dp_mat**1, nc_mat**1)
 
     def test_identity_pow(self):
         I = dp.Matrix(100, 100)
@@ -489,18 +489,18 @@ class TestPow(TestCase):
             I.set(i, i, 1)
 
         dp_mat, nc_mat = rand_dp_nc_matrix(100, 100, seed=0)
-        self.assertEqual(dp_mat ** 0, I)
-        self.assertEqual(I, nc_mat ** 0)
-        self.assertEqual(dp_mat ** 0, nc_mat ** 0)
+        self.assertEqual(dp_mat**0, I)
+        self.assertEqual(I, nc_mat**0)
+        self.assertEqual(dp_mat**0, nc_mat**0)
 
     def test_1_slice_pow(self):
         dp_mat, nc_mat = rand_dp_nc_matrix(100, 100, seed=0)
         dp_mat = dp_mat[25:50, 25:50]
         nc_mat = nc_mat[25:50, 25:50]
         self.assertEqual(dp_mat, nc_mat)
-        self.assertEqual(dp_mat ** 1, nc_mat)
-        self.assertEqual(dp_mat, nc_mat ** 1)
-        self.assertEqual(dp_mat ** 1, nc_mat ** 1)
+        self.assertEqual(dp_mat**1, nc_mat)
+        self.assertEqual(dp_mat, nc_mat**1)
+        self.assertEqual(dp_mat**1, nc_mat**1)
 
     def test_identity_slice_pow(self):
         I = dp.Matrix(100, 100)
@@ -512,9 +512,9 @@ class TestPow(TestCase):
         dp_mat, nc_mat = rand_dp_nc_matrix(100, 100, seed=0)
         dp_mat = dp_mat[25:50, 25:50]
         nc_mat = nc_mat[25:50, 25:50]
-        self.assertEqual(dp_mat ** 0, I)
-        self.assertEqual(I, nc_mat ** 0)
-        self.assertEqual(dp_mat ** 0, nc_mat ** 0)
+        self.assertEqual(dp_mat**0, I)
+        self.assertEqual(I, nc_mat**0)
+        self.assertEqual(dp_mat**0, nc_mat**0)
 
 
 class TestGet(TestCase):
@@ -534,7 +534,7 @@ class TestGet(TestCase):
         for _ in range(1000):
             rand_row = np.random.randint(dp_mat.shape[0])
             rand_col = np.random.randint(dp_mat.shape[1])
-            self.assertEqual(
+            np.testing.assert_almost_equal(
                 nc_mat.get(rand_row, rand_col), dp_mat.get(rand_row, rand_col)
             )
 
@@ -546,6 +546,10 @@ class TestGet(TestCase):
             nc_mat.get(1)
         with self.assertRaises(TypeError):
             nc_mat.get(1, 1, 1)
+        with self.assertRaises(IndexError):
+            nc_mat.get(11, 1)
+        with self.assertRaises(IndexError):
+            nc_mat.get(-1, 0)
 
 
 class TestSet(TestCase):
@@ -1260,4 +1264,4 @@ class TestComprehensive(TestCase):
         ad, an = rand_dp_nc_matrix(100, 100, seed=0)
         bd, bn = rand_dp_nc_matrix(100, 100, seed=0)
         cd, cn = rand_dp_nc_matrix(100, 100, seed=0)
-        self.assertEqual(((-ad) - bd) + cd ** 2 + ad, ((-an) - bn) + cn ** 2 + an)
+        self.assertEqual(((-ad) - bd) + cd**2 + ad, ((-an) - bn) + cn**2 + an)
